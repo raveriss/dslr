@@ -37,7 +37,7 @@ def load_weights(fichier):
     """
     Charge le fichier JSON contenant : 
         -thetas : matrice de poids (K x n+1)
-        -mu : moyenne utilisees pour normaliser
+        -mu : moyenne des matieres utilisees pour normaliser
         -sigma : ecart-types utilises pour normaliser
         -inv_house_map :mapping label = maison
 
@@ -48,7 +48,7 @@ def load_weights(fichier):
         thetas(numpy.ndarray) : matrice des poids
         mu (list[float] : moyenne colonne par colonne
         sigma (list[float]) :ecart-type colonne par colonne
-        inv_house_map (dict) : nom des differente maison
+        inv_house_map (dict[int, str]) : nom des differente maison
     """
     #ouvre et lire le JSON
     with open(fichier, 'r') as f:
@@ -86,6 +86,9 @@ def get_numeric_features(df):
     # Exclusion de la colonne 'Index' si elle apparaît dans les numériques
     if "Index" in numeric_cols:
         numeric_cols.remove("Index")
+    # Exclusion de la colonne 'House' si elle apparaît dans les numériques
+    if "Hogwarts House" in numeric_cols:
+        numeric_cols.remove("Hogwarts House")
     return numeric_cols
 
 def load_and_prepare_data_test(path):
@@ -93,7 +96,7 @@ def load_and_prepare_data_test(path):
     Lis le fichier dataset_test.csv
 
     Arg :
-        chemin du fichier dataset_test.csv
+        path : chemin du fichier dataset_test.csv
     Return :
         X_test_df (panda.dataFrame): Contient que les colonne de matieres avec un eleve par ligne
     """
@@ -106,8 +109,51 @@ def load_and_prepare_data_test(path):
     return X_test_df
 
 def normalize_test_features(X_test_df, mu, sigma):
+    """
+    normalise les feature de data_testen utilisant les paramettre
+        calculer pendant l'entraiment(mu et sigma)
 
-    return X_test_norm
+    Arg :
+        X_test_df(panda.dataFrame): Feature brute du data_test
+        mu (list[float]): moyenne des matieres colonne calculer par train
+        sigma (list[float]): ecart-type colonne calculer par train
+    Return:
+        X_test_norm(numpy.ndarray): Matrice normaliser
+    """
+    # Convertir le DataFrame en numpy array de floats
+    X = X_test_df.values.astype(float)
+    # Converti mu et sigma en array pour pouvoir faire les operation
+    mu = np.array(mu)
+    sigma = np.array(sigma)
+    # Normaliser chaque valeur: (x_ij - mu_j) / sigma_j
+    # On soustrait la moyenne de la colonne (on centre),
+    # On divise par l’écart-type (on réduit).
+    X_norm = (X - mu) / sigma
+    return X_norm
+
+def prediction_house(X_test_bias, thetas, inv_house_map):
+    """
+    Predit la maison de chaque eleve a partir de la matrice de features
+    deja normalisee et les poids appris
+
+    Arg:
+        X_test_bias(numpy.ndarray)
+        thetas(numpy.ndarray) : matrice des poids
+        inv_house_map (dict[int, str]) : nom des differente maison
+
+    Return: 
+        predicted_house(list[str]):Liste des maison predi pour chaque eleve
+    """
+    #Calcule le score pour chaque eleve et chaque maison :
+    # score[i, k] = kmatrice m x K (m = eleve et K = matiere)
+    scores = X_test_bias.dot(thetas.T)
+    #sigmoide pour convertir les scores en probabilite pour donner des score entre 0 et 1
+    probs = 1 / (1 + np.exp(-scores))
+    # Selection de la maison avec la probabililte maximal
+    pred_label = np.argmax(probs, axis=1)
+    # Convertion de label numerique  en nom de maison
+    prediction_house = [inv_house_map[int(k)] for k in pred_label]
+    return prediction_house
 
 def main():
     try:
@@ -130,7 +176,11 @@ def main():
         # Predire la maison de chaque eleve
         predict_house = prediction_house(X_test_bias, thetas, inv_house_map)
         # Sauvegerder les prediction dans houses.csv
-
+        df_out = pd.DataFrame({
+            "Index": list(range(m)),
+            "Hogwarts House": predict_house
+        })
+        df_out.to_csv(args.out, index=False)
         print(f"→ Fichier de prediction enregistres dans {args.out}")
 
     except Exception as e:
