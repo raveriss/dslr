@@ -91,7 +91,7 @@ def load_and_prepare_data(path):
     df = df.dropna(subset=['Hogwarts House'] + get_numeric_features(df))
 
     # get_numeric_features(df) renvoie la liste des matières (colonnes de notes).
-    # reset_index(drop=True) réindexe les élèves de 0 à m-1 après le dropna.
+    # reset_index(drop=True) réindexe les élèves de 0 à m-1
     features = get_numeric_features(df)
     X = df[features].reset_index(drop=True)
 
@@ -99,7 +99,7 @@ def load_and_prepare_data(path):
     # 'houses' contient la liste des noms de chaque maison.
     # 'house_map' associe chaque nom de maison à un entier unique (0,1,2,3).
     # 'inv_house_map' permet d'inverser ce mapping pour la prédiction.
-    # 'y' devient une liste d'entiers correspondant à chaque élève.
+    # 'y' devient une liste d'entiers correspondant à chaque élève. Exemple : [0, 2, 1, 3, 2, ...] 0 = Gryffindor, 1 = Hufflepuff, etc
     houses = df['Hogwarts House'].unique()
     house_map = {house: idx for idx, house in enumerate(houses)}
     inv_house_map = {idx: house for house, idx in house_map.items()}
@@ -128,6 +128,7 @@ def normalize_features(X_df):
     # On divise par l’écart-type (on réduit).
     X_norm = (X - mu) / sigma
     # Retourner la matrice normalisée et les paramètres de normalisation sous forme de listes
+    # JSON ne sait PAS stocker des tableau NumPy donc on converti en list
     return X_norm, mu.tolist(), sigma.tolist()
 
 
@@ -141,25 +142,26 @@ def train_one_vs_all(X, y, alpha, num_iters):
     Entraîne un classifieur logistique one-vs-all.
 
     Args:
-        X (tableau numpy): matrice normalisée avec biais ajouté.
+        X (tableau numpy): matrice normalisée avec biais ajouté au debut.
         y (vecteur numpy): Chaque valeur est un entier 0, 1, 2 ou 3 (label pour chaque maison).
-        alpha (float): learning rate. (taille des "pas") args.alpha
-        num_iters (int): nombre d'itérations. args.iteration
+        alpha (float): learning rate. (taille des "pas"0.01) args.alpha 
+        num_iters (int): nombre d'itérations. args.iteration 1000
 
     Returns:
         thetas (matrice): poids de dimension (K, n+1).
     """
     # Récupérer dimensions de X
-    # m = nombre d'exemples d'entraînement
-    # n = nombre de paramètres (13 features + 1 biais)
+    # m = nombre d'exemples d'entraînement(nb de ligne)
+    # n = nombre de paramètres nb de colonne (13 features + 1 biais)
     m, n = X.shape
-
-    # Identifier les classes uniques dans y (p. ex. 4 maisons)
+    # Identifier les classes uniques dans y(maison de 0 a 3)
     maison = np.unique(y)
-    # K = nombre total de de maison
+    # K = nombre total de de maison(4)
     K = len(maison)
+    # print(f"m = {m} n = {n} maison = {maison} k = {K}")
 
-    # On crée une matrice de poids de taille (K maisons, n features+1 biais) initialisée à 0
+    # On crée une matrice de poids de taille (K maisons, n features+1 biais)
+    # initialisée à 0
     thetas = np.zeros((K, n))
 
     # Parcourir chaque maison pour entraîner un classifieur binaire
@@ -190,13 +192,14 @@ def main():
     try:
         # Parser les arguments
         args = parse_args()
-         # Chargement et préparation
+        # Chargement et préparation
         X_df, y, house_map, inv_house_map = load_and_prepare_data(args.input_csv)
         # Normalisation
         X_norm, mu, sigma = normalize_features(X_df)
         # Ajouter la colonne biais
         # m = nombre d’élèves (lignes dans X_norm)
         m = X_norm.shape[0]
+        # Ajouter la colonne biais
         # np.ones((m, 1)) = Crée une colonne de 1 (un 1 pour chaque élève)
         X_bias = np.hstack([np.ones((m, 1)), X_norm])
         # Entraînement
@@ -212,7 +215,7 @@ def main():
         # ouvre le fichier "weights.json" en ecriture
         # Le fichier ouvert sera accessible via la variable f
         with open(args.out, 'w') as f:
-            # Écrit (sauvegarde) l’objet Python output au format JSON dans le fichie
+            # Écrit (sauvegarde) l’objet Python output au format JSON dans le fichier
             json.dump(output, f)
         print(f"→ Poids et paramètres enregistrés dans {args.out}")
 
