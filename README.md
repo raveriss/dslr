@@ -24,7 +24,7 @@ dslr/
 
 * Python 3.8+
 * Virtualenv ou équivalent
-* (Facultatif) Git pour le versionnage
+* Poetry
 
 ## Installation
 
@@ -34,16 +34,10 @@ dslr/
    git clone <url_du_repo>
    cd dslr-project
    ```
-2. Créer et activer un environnement virtuel :
+2. Installer les dépendances (à compléter au fur et à mesure) :
 
    ```bash
-   python3 -m venv .venv
-   source .venv/bin/activate
-   ```
-3. Installer les dépendances (à compléter au fur et à mesure) :
-
-   ```bash
-   pip install -r requirements.txt
+   poetry install
    ```
 
 ## Usage des scripts
@@ -51,7 +45,7 @@ dslr/
 Chaque script se trouve dans le dossier `scripts/` et comporte une aide intégrée :
 
 ```bash
-python scripts/<nom_du_script>.py --help
+poetry run python scripts/<nom_du_script>.py --help
 ```
 
 ### 1. `describe.py`
@@ -73,7 +67,7 @@ python scripts/<nom_du_script>.py --help
 **Exemple d'utilisation** :
 
 ```bash
-python scripts/describe.py data/dataset_train.csv
+poetry run python scripts/describe.py data/dataset_train.csv
 ```
 
 * Le script lit `dataset_train.csv` (jeu d'entraînement), calcule les statistiques pour chaque colonne numérique et affiche un tableau comme :
