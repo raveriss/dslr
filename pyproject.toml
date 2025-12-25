@@ -21,3 +21,8 @@ dependencies = ["pandas (>=2.3.3,<3.0.0)", "numpy (>=2.4.0,<3.0.0)", "matplotlib
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "scikit-learn (>=1.8.0,<2.0.0)"
+]

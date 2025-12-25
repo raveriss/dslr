@@ -103,10 +103,14 @@ def load_and_prepare_data_test(path):
     df = pd.read_csv(path)
     # get_numeric_features(df) renvoie la liste des matières (colonnes de notes).
     features = get_numeric_features(df)
-    # reset_index(drop=True) réindexe les élèves de 0 à m-1
-    X_test_df = df[features].reset_index(drop=True)
 
-    return X_test_df
+    if "Index" not in df.columns:
+        raise ValueError("La colonne 'Index' est manquante dans le fichier test.")
+
+    index_list = df["Index"].tolist()
+    X_test_df = df[features].copy()
+
+    return index_list, X_test_df
 
 def normalize_test_features(X_test_df, mu, sigma):
     """
@@ -120,15 +124,22 @@ def normalize_test_features(X_test_df, mu, sigma):
     Return:
         X_test_norm(numpy.ndarray): Matrice normaliser
     """
-    # Convertir le DataFrame en numpy array de floats
-    X = X_test_df.values.astype(float)
     # Converti mu et sigma en array pour pouvoir faire les operation
-    mu = np.array(mu)
-    sigma = np.array(sigma)
+    mu = np.array(mu, dtype=float)
+    sigma = np.array(sigma, dtype=float)
+    # sigma safe (évite division par 0)
+    sigma_safe = np.where(sigma == 0, 1.0, sigma)
+    
+    # Convertir en float (DataFrame) et IMPUTER NaN colonne par colonne
+    X_df = X_test_df.astype(float).copy()
+    for j, col in enumerate(X_df.columns):
+        # remplace NaN par la moyenne d'entraînement
+        X_df[col] = X_df[col].fillna(mu[j])
+    X = X_df.values.astype(float)
     # Normaliser chaque valeur: (x_ij - mu_j) / sigma_j
     # On soustrait la moyenne de la colonne (on centre),
     # On divise par l’écart-type (on réduit).
-    X_norm = (X - mu) / sigma
+    X_norm = (X - mu) / sigma_safe
     return X_norm
 
 def prediction_house(X_test_bias, thetas, inv_house_map):
@@ -148,6 +159,7 @@ def prediction_house(X_test_bias, thetas, inv_house_map):
     # score[i, k] = kmatrice m x K (m = eleve et K = matiere)
     scores = X_test_bias.dot(thetas.T)
     #sigmoide pour convertir les scores en probabilite pour donner des score entre 0 et 1
+    scores = np.clip(scores, -500, 500)
     probs = 1 / (1 + np.exp(-scores))
     # Selection de la maison avec la probabililte maximal
     pred_label = np.argmax(probs, axis=1)
@@ -163,7 +175,7 @@ def main():
         thetas, mu, sigma, inv_house_map = load_weights(args.weights)
         # print(f"thetas = {thetas}, mu = {mu}, sigma = {sigma}, inv_house = {inv_house_map}")
         # charger le dataset de test
-        X_test_df = load_and_prepare_data_test(args.input_csv)
+        index_list, X_test_df = load_and_prepare_data_test(args.input_csv)
         # print(f"test_df = {X_test_df}")
         # apliquer la meme normaliser que pour dataset_train
         X_test_norm = normalize_test_features(X_test_df, mu, sigma)
@@ -177,7 +189,7 @@ def main():
         predict_house = prediction_house(X_test_bias, thetas, inv_house_map)
         # Sauvegerder les prediction dans houses.csv
         df_out = pd.DataFrame({
-            "Index": list(range(m)),
+            "Index": index_list,
             "Hogwarts House": predict_house
         })
         df_out.to_csv(args.out, index=False)
