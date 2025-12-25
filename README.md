@@ -16,8 +16,9 @@ dslr/
 │   ├─ pair_plot.py
 │   ├─ logreg_train.py
 │   └─ logreg_predict.py
-├─ README.md
-└─ requirements.txt
+├─ poetry.lock
+├─ pyproject.toml
+└─ README.md
 ```
 
 ## Prérequis
@@ -31,7 +32,7 @@ dslr/
 
    ```bash
    git clone <url_du_repo>
-   cd dslr-project
+   cd dslr
    ```
 2. Installer les dépendances (à compléter au fur et à mesure) :
 
