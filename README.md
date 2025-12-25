@@ -23,7 +23,6 @@ dslr/
 ## Prérequis
 
 * Python 3.8+
-* Virtualenv ou équivalent
 * Poetry
 
 ## Installation
