@@ -100,8 +100,8 @@ def load_and_prepare_data(path):
     # 'house_map' associe chaque nom de maison à un entier unique (0,1,2,3).
     # 'inv_house_map' permet d'inverser ce mapping pour la prédiction.
     # 'y' devient une liste d'entiers correspondant à chaque élève. Exemple : [0, 2, 1, 3, 2, ...] 0 = Gryffindor, 1 = Hufflepuff, etc
-    houses = df['Hogwarts House'].unique()
-    house_map = {house: idx for idx, house in enumerate(houses)}
+    houses = ["Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin"]
+    house_map = {h:i for i,h in enumerate(houses)}
     inv_house_map = {idx: house for house, idx in house_map.items()}
     y = df['Hogwarts House'].map(house_map).tolist()
 
