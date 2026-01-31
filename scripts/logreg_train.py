@@ -209,6 +209,7 @@ def main():
             'thetas': thetas.tolist(),
             'mu': mu,
             'sigma': sigma,
+            'features': features,
             'house_map': house_map,
             'inv_house_map': inv_house_map
         }
