@@ -39,6 +39,7 @@ def load_weights(fichier):
         -thetas : matrice de poids (K x n+1)
         -mu : moyenne des matieres utilisees pour normaliser
         -sigma : ecart-types utilises pour normaliser
+        -features : nom de toute les matieres
         -inv_house_map :mapping label = maison
 
     Args:
@@ -203,4 +204,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
