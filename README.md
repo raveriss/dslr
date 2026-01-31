@@ -34,7 +34,7 @@ dslr/
    git clone <url_du_repo>
    cd dslr
    ```
-2. Installer les dépendances (à compléter au fur et à mesure) :
+2. Installer les dépendances :
 
    ```bash
    poetry install
