@@ -59,8 +59,9 @@ def load_weights(fichier):
     sigma = data["sigma"]
     #reconvetie les cles en int
     inv_house_map = {int(k): v for k, v in data["inv_house_map"].items()}
+    features = data["features"]
 
-    return thetas, mu, sigma, inv_house_map
+    return thetas, mu, sigma, inv_house_map, features
 
 def get_numeric_features(df):
     """
@@ -101,11 +102,13 @@ def load_and_prepare_data_test(path):
         X_test_df (panda.dataFrame): Contient que les colonne de matieres avec un eleve par ligne
     """
     df = pd.read_csv(path)
-    # get_numeric_features(df) renvoie la liste des matières (colonnes de notes).
-    features = get_numeric_features(df)
 
     if "Index" not in df.columns:
         raise ValueError("La colonne 'Index' est manquante dans le fichier test.")
+
+    missing = [c for c in features if c not in df.columns]
+    if missing:
+        raise ValueError(f"Colonnes manquantes dans le fichier test: {missing}")
 
     index_list = df["Index"].tolist()
     X_test_df = df[features].copy()
@@ -172,10 +175,10 @@ def main():
         # Parser les arguments
         args = parse_args()
         # charger les paramettre apris
-        thetas, mu, sigma, inv_house_map = load_weights(args.weights)
+        thetas, mu, sigma, inv_house_map, features = load_weights(args.weights)
         # print(f"thetas = {thetas}, mu = {mu}, sigma = {sigma}, inv_house = {inv_house_map}")
         # charger le dataset de test
-        index_list, X_test_df = load_and_prepare_data_test(args.input_csv)
+        index_list, X_test_df = load_and_prepare_data_test(args.input_csv, features)
         # print(f"test_df = {X_test_df}")
         # apliquer la meme normaliser que pour dataset_train
         X_test_norm = normalize_test_features(X_test_df, mu, sigma)
@@ -200,3 +203,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
