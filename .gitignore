@@ -2,3 +2,8 @@
 # datasets/
 __pycache__/
 *.pyc
+visual_histogram/
+visual_pair/
+visual_scatter/
+*.json
+*.csv
