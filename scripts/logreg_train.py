@@ -105,7 +105,7 @@ def load_and_prepare_data(path):
     inv_house_map = {idx: house for house, idx in house_map.items()}
     y = df['Hogwarts House'].map(house_map).tolist()
 
-    return X, y, house_map, inv_house_map
+    return X, y, house_map, inv_house_map, features
 
 def normalize_features(X_df):
     """
@@ -193,7 +193,7 @@ def main():
         # Parser les arguments
         args = parse_args()
         # Chargement et préparation
-        X_df, y, house_map, inv_house_map = load_and_prepare_data(args.input_csv)
+        X_df, y, house_map, inv_house_map, features = load_and_prepare_data(args.input_csv)
         # Normalisation
         X_norm, mu, sigma = normalize_features(X_df)
         # Ajouter la colonne biais

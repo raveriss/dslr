@@ -93,14 +93,16 @@ def get_numeric_features(df):
         numeric_cols.remove("Hogwarts House")
     return numeric_cols
 
-def load_and_prepare_data_test(path):
+def load_and_prepare_data_test(path, features):
     """
     Lis le fichier dataset_test.csv
 
     Arg :
         path : chemin du fichier dataset_test.csv
+        features : liste des colonnes attendues depuis weights.json
     Return :
-        X_test_df (panda.dataFrame): Contient que les colonne de matieres avec un eleve par ligne
+        index_list (list[int]) : liste des index du dataset test
+        X_test_df (pandas.DataFrame) : colonnes de matieres dans le bon ordre
     """
     df = pd.read_csv(path)
 
