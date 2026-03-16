@@ -37,9 +37,14 @@ dslr/
 2. Installer les dépendances :
 
    ```bash
-   curl -sSL https://install.python-poetry.org | python3 -
-   poetry install
+   make
    ```
+3. Si poetry a du etre installer et que l'on veux le supprimer:
+
+  ```bash
+  curl -sSL https://install.python-poetry.org | python3 - --uninstall
+  rm -rf ~/.cache/pypoetry
+  ```
 
 ## Usage des scripts
 
