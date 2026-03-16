@@ -23,8 +23,8 @@ def parse_arg():
     # Dossier de sortie pour les images
     parser.add_argument(
         "--outdir", "-o",
-        default="visual_scatter",
-        help="Dossier de sortie pour les PNG (défaut : 'visualization')."
+        default="visuals",
+        help="Dossier de sortie pour les PNG"
     )
     return parser.parse_args()
 
@@ -156,7 +156,7 @@ def plot_scatter_for_best_pair(df, best_pair, outdir):
 
     # Sauvegarde
     os.makedirs(outdir, exist_ok=True)
-    fname = f"scatter_{f1.replace(' ', '_')}_{f2.replace(' ', '_')}.png"
+    fname = f"scatter.png"
     path = os.path.join(outdir, fname)
     plt.savefig(path)
     plt.close()
@@ -173,8 +173,8 @@ def main():
         # best_score la valeur du coefficient qui montre leur degré de similarité.
         best_pair, best_score = find_most_similar_features(df, numfeatures)
 
-        print(f"best_ pair = ", best_pair)
-        print(f"best_score = ", best_score)
+        # print(f"best_ pair = ", best_pair)
+        # print(f"best_score = ", best_score)
         # creer le fichier de sortie
         plot_scatter_for_best_pair(df, best_pair, args.outdir)
 

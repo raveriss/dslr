@@ -32,7 +32,7 @@ def parse_args():
     # Dossier de sortie pour les images
     parser.add_argument(
         "--outdir", "-o",
-        default="visual_histogram",
+        default="visuals",
         help="Dossier de sortie pour les PNG (défaut : 'visualization')."
     )
     return parser.parse_args()
@@ -63,7 +63,26 @@ def get_numeric_features(df):
         numeric_cols.remove("Index")
     return numeric_cols
 
-def all_histograms(df, features, houses, bins, outdir):
+def find_most_homogeneous(df, features, houses):
+    best_feature = None
+    best_score = float("inf")
+
+    for feat in features:
+        means = []
+        for house in houses:
+            vals = df[df["Hogwarts House"] == house][feat].dropna()
+            if len(vals) > 0:
+                means.append(vals.mean())
+
+        if len(means) > 1:
+            score = max(means) - min(means)
+            if score < best_score:
+                best_score = score
+                best_feature = feat
+
+    return best_feature
+
+def one_histogram(df, feature, houses, bins, outdir):
     """
     Trace tous les histogrammes des matières dans une grille 3×4 et sauvegarde
     le résultat dans un seul PNG.
@@ -77,31 +96,25 @@ def all_histograms(df, features, houses, bins, outdir):
     """
 
     # 1. Créer une figure avec 3 lignes et 4 colonnes de sous-plots
-    fig, axes = plt.subplots(nrows=3, ncols=4, figsize=(16, 12))
-    axes = axes.flatten()  # pour itérer plus facilement
+    fig, ax = plt.subplots(figsize=(10, 6))
 
-    # 2. Pour chaque matière, tracer dans un sous-plot distinct
-    for ax, feat in zip(axes, features):
-        # a) Superposer un histogramme par maison
-        for house in houses:
-            # Filtrer les notes valides pour cette maison et cette matière
-            vals = df[df['Hogwarts House'] == house][feat].dropna()
-            ax.hist(vals, bins=bins, alpha=0.5, label=house)
+    for house in houses:
+        vals = df[df["Hogwarts House"] == house][feature].dropna()
+        ax.hist(vals, bins=bins, alpha=0.5, label=house)
         # b) Titres et labels
         # ax.set_title(feat)
-        ax.set_xlabel(feat)
+        ax.set_xlabel(feature)
         ax.set_ylabel("Fréquence")
+        ax.set_title(f"Histogramme de {feature} par maison")
         ax.legend(fontsize='small')
 
     # 3. Ajuster la mise en page et ajouter un titre global
-    plt.tight_layout(rect=[0, 0.03, 1, 0.95])
-    fig.suptitle("Histogrammes des matières par maison", fontsize=18)
-
-    # 4. Enregistrer le fichier unique
-    outfile = os.path.join(outdir, "all_histograms.png")
+    plt.tight_layout()
+    # 4. Enreg_scatteristrer le fichier unique
+    outfile = os.path.join(outdir, "histogram.png")
     fig.savefig(outfile)
     plt.close(fig)
-    print(f"→ all_histograms.png créé dans {outdir}/")
+    print(f"→ histogram.png créé dans {outdir}/")
 
 
 def main():
@@ -115,11 +128,12 @@ def main():
         houses = df["Hogwarts House"].dropna().unique()
         # Identifier les colonnes numériques (features)
         features = get_numeric_features(df)
+        best_feature = find_most_homogeneous(df, features, houses)
         # Préparer le dossier de sortie 'visualization'
         os.makedirs(args.outdir, exist_ok=True)
         # Trace et sauvegarde un histogramme superposé pour chaque feature.
         # all_histograms(df, features, houses, args.bins, args.outdir)
-        all_histograms(df, features, houses, args.bins, args.outdir)
+        one_histogram(df, best_feature, houses, args.bins, args.outdir)
     
     except Exception as e:
         print(f"Une erreur est survenue : {e}")

@@ -23,7 +23,7 @@ def parse_arg():
     # Dossier de sortie pour les images
     parser.add_argument(
         "--outdir", "-o",
-        default="visual_pair",
+        default="visuals",
         help="Dossier de sortie pour les PNG (défaut : 'visualization')."
     )
     return parser.parse_args()

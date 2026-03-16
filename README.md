@@ -37,6 +37,7 @@ dslr/
 2. Installer les dépendances :
 
    ```bash
+   curl -sSL https://install.python-poetry.org | python3 -
    poetry install
    ```
 
@@ -51,6 +52,7 @@ poetry run python scripts/<nom_du_script>.py --help
 ### 1. `describe.py`
 
 **Objectif** : Calculer et afficher les statistiques descriptives de chaque colonne numérique d'un fichier CSV, sans utiliser `DataFrame.describe()`.
+
 
 **Fonctionnalités** :
 
@@ -67,7 +69,7 @@ poetry run python scripts/<nom_du_script>.py --help
 **Exemple d'utilisation** :
 
 ```bash
-poetry run python scripts/describe.py data/dataset_train.csv
+poetry run python scripts/describe.py datasets/dataset_train.csv
 ```
 
 * Le script lit `dataset_train.csv` (jeu d'entraînement), calcule les statistiques pour chaque colonne numérique et affiche un tableau comme :
@@ -88,21 +90,38 @@ poetry run python scripts/describe.py data/dataset_train.csv
 
 **Objectif** : Tracer et analyser les distributions des notes pour chaque matière, afin d'identifier la matière avec la distribution la plus homogène, et sauvegarder les histogrammes générés.
 
+```bash
+poetry run python scripts/histogram.py datasets/dataset_train.csv
+```
 ### 3. `scatter_plot.py`
 
 **Objectif** : Générer un nuage de points entre deux features pour visualiser les relations et identifier des corrélations potentielles.
+
+```bash
+poetry run python scripts/scatter_plot.py datasets/dataset_train.csv
+```
 
 ### 4. `pair_plot.py`
 
 **Objectif** :  Afficher la matrice complète de scatter plots pour toutes les paires de colonnes numériques, facilitant la sélection des variables pour la modélisation.
 
+```bash
+poetry run python scripts/pair_plot.py datasets/dataset_train.csv
+```
 ### 5. `logreg_train.py`
 
 **Objectif** : Utiliser `dataset_train.csv` pour entraîner les modèles de régression logistique multi-classe (one-vs-all) via descente de gradient et sauvegarder les poids.
 
+```bash
+poetry run python scripts/logreg_train.py datasets/dataset_train.csv
+```
 ### 6. `logreg_predict.py`
 
 **Objectif** : Utiliser `dataset_test.csv` et les poids entraînés pour prédire la maison de chaque élève en calculant les probabilités, puis générer le fichier de soumission `houses.csv`.
+
+```bash
+poetry run python scripts/logreg_predict.py datasets/dataset_test.csv weights.json
+```
 
 ### Différence entre `dataset_train.csv` et `dataset_test.csv`
 
@@ -121,6 +140,26 @@ poetry run python scripts/describe.py data/dataset_train.csv
 
     1. **Prédiction** (logreg\_predict.py) en chargeant les poids obtenus
     2. Génération du fichier de soumission `houses.csv`
+
+### Comparer avec scikit 
+```bash
+poetry run python scikit/benchmark_sklearn_vs_mine.py datasets/dataset_train.csv datasets/dataset_test.csv houses.csv
+```
+**Objectif** : Utiliser scikit pour entrainer, predire puis creer houses_sklearn.csv et le comparer avec houses.csv
+
+Interprétation
+
+Common indexes : 400
+→ les deux fichiers contiennent bien les 400 mêmes élèves
+
+Same predictions: 400
+→ pour chaque élève, la maison prédite est la même
+
+Agreement : 1.0000
+→ 100 % d’accord
+
+No disagreement found.
+→ aucune différence entre houses.csv et houses_sklearn.csv
 
 ## Lien utils
 
