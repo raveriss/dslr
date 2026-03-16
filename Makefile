@@ -1,7 +1,8 @@
 NAME = dslr
 
-POETRY = poetry
-PYTHON = $(POETRY) run python
+VENV = .venv
+PYTHON = $(VENV)/bin/python
+PIP = $(VENV)/bin/pip
 
 TRAIN_DATA = datasets/dataset_train.csv
 TEST_DATA = datasets/dataset_test.csv
@@ -11,11 +12,8 @@ PREDICTIONS = houses.csv
 all: install
 
 install:
-	@command -v poetry >/dev/null 2>&1 || { \
-		echo "\nPoetry not installed. Installing..."; \
-		curl -sSL https://install.python-poetry.org | python3 -; \
-	}
-	$(POETRY) install
+	@test -d $(VENV) || python3 -m venv $(VENV)
+	$(PIP) install -r requirements.txt
 
 describe:
 	$(PYTHON) scripts/describe.py $(TRAIN_DATA)
@@ -35,7 +33,7 @@ train:
 predict:
 	$(PYTHON) scripts/logreg_predict.py $(TEST_DATA) $(WEIGHTS)
 
-re: clean install
+re: fclean all
 
 clean:
 	rm -f $(PREDICTIONS)
@@ -46,10 +44,11 @@ clean:
 	find . -type f -name "*.pyc" -delete
 
 fclean: clean
+	rm -rf .venv
 
 help:
 	@echo "Available targets:"
-	@echo "  make install     - Install dependencies with Poetry"
+	@echo "  make install     - Install venv"
 	@echo "  make describe    - Display descriptive statistics from dataset_train.csv"
 	@echo "  make histogram   - Generate histograms from dataset_train.csv"
 	@echo "  make scatter     - Generate scatter plot(s) from dataset_train.csv"
