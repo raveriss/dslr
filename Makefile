@@ -11,6 +11,7 @@ PREDICTIONS = houses.csv
 all: install
 
 install:
+	@command -v poetry >/dev/null 2>&1 || { echo "Poetry is not installed. \nRun: curl -sSL https://install.python-poetry.org | python3 -"; exit 1; }
 	$(POETRY) install
 
 describe:
