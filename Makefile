@@ -3,17 +3,51 @@ NAME = dslr
 VENV = .venv
 PYTHON = $(VENV)/bin/python
 PIP = $(VENV)/bin/pip
+VENV_ERROR_LOG = /tmp/dslr_venv_error.log
 
 TRAIN_DATA = datasets/dataset_train.csv
 TEST_DATA = datasets/dataset_test.csv
 WEIGHTS = weights.json
 PREDICTIONS = houses.csv
 
+.PHONY: all install describe histogram scatter pair train predict re clean fclean help
+
 all: install
 
 install:
-	@test -d $(VENV) || python3 -m venv $(VENV)
+	@set -e; \
+	if [ ! -x "$(PIP)" ]; then \
+		echo "Virtual environment is missing or incomplete. Recreating $(VENV)..."; \
+		rm -rf $(VENV); \
+		$(MAKE) --no-print-directory $(PYTHON); \
+	fi
 	$(PIP) install -r requirements.txt
+
+$(PYTHON):
+	@set -e; \
+	if python3 -m venv $(VENV) >$(VENV_ERROR_LOG) 2>&1; then \
+		rm -f $(VENV_ERROR_LOG); \
+	else \
+		if grep -Eqi "ensurepip is not|python3-venv" $(VENV_ERROR_LOG); then \
+			echo "python3-venv is missing. Falling back to a user-space virtualenv setup..."; \
+			if ! python3 -m virtualenv --version >/dev/null 2>&1; then \
+				if python3 -m pip --version >/dev/null 2>&1; then \
+					python3 -m pip install --user --upgrade virtualenv; \
+				else \
+					cat $(VENV_ERROR_LOG); \
+					rm -f $(VENV_ERROR_LOG); \
+					echo "Unable to create .venv without sudo: python3-venv and pip are both unavailable."; \
+					exit 1; \
+				fi; \
+			fi; \
+			python3 -m virtualenv $(VENV); \
+			rm -f $(VENV_ERROR_LOG); \
+		else \
+			cat $(VENV_ERROR_LOG); \
+			rm -f $(VENV_ERROR_LOG); \
+			exit 1; \
+		fi; \
+	fi
 
 describe:
 	$(PYTHON) scripts/describe.py $(TRAIN_DATA)
@@ -48,7 +82,7 @@ fclean: clean
 
 help:
 	@echo "Available targets:"
-	@echo "  make install     - Install venv"
+	@echo "  make install     - Install venv and Python dependencies"
 	@echo "  make describe    - Display descriptive statistics from dataset_train.csv"
 	@echo "  make histogram   - Generate histograms from dataset_train.csv"
 	@echo "  make scatter     - Generate scatter plot(s) from dataset_train.csv"
