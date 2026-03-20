@@ -1,210 +1,227 @@
 import argparse
-import os
 import json
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
-def parse_args():
+
+def parse_command_line_arguments():
     """
     Parse les arguments de la ligne de commande pour logreg_predict.py.
 
     Returns:
         Namespace: contient les attributs suivants
-          - input_csv (str)      : chemin vers dataset_test.csv
-          - weights              : fichier json contenant les poids
-          - out (str)            : chemin du fichier de sortie a genere
+          - input_csv_path (str): chemin vers dataset_test.csv
+          - weights_file_path (str): fichier json contenant les poids
+          - output_csv_path (str): chemin du fichier de sortie a genere
     """
-    parser = argparse.ArgumentParser(
-        description="Predit la maison de chaque elleve a partir d'un dataset test et du fichier json"
+    argument_parser = argparse.ArgumentParser(
+        description="Predit la maison de chaque eleve a partir d'un dataset test et du fichier json"
     )
-    parser.add_argument(
-        "input_csv",
+    argument_parser.add_argument(
+        "input_csv_path",
         help="Chemin vers le fichier dataset_test.csv (sans colonne House)"
     )
-    parser.add_argument(
-        "weights",
+    argument_parser.add_argument(
+        "weights_file_path",
         help="Fichier JSON contenant les poids appris (creer par logreg_train.py)"
     )
-    parser.add_argument(
+    argument_parser.add_argument(
         "--out", "-o",
+        dest="output_csv_path",
         default="houses.csv",
-        help="Fichier de sortie contenant les prediction"
+        help="Fichier de sortie contenant les predictions"
     )
-    return parser.parse_args()
+    return argument_parser.parse_args()
 
-def load_weights(fichier):
+
+def load_model_parameters(weights_file_path):
     """
-    Charge le fichier JSON contenant : 
-        -thetas : matrice de poids (K x n+1)
-        -mu : moyenne des matieres utilisees pour normaliser
-        -sigma : ecart-types utilises pour normaliser
-        -features : nom de toute les matieres
-        -inv_house_map :mapping label = maison
+    Charge le fichier JSON contenant :
+        - thetas : matrice de poids (K x n+1)
+        - mu : moyenne des matieres utilisees pour normaliser
+        - sigma : ecart-types utilises pour normaliser
+        - features : nom de toutes les matieres
+        - inv_house_map : mapping label -> maison
 
     Args:
-        fichier(str) :chemin vers le fichier JSON
+        weights_file_path (str): chemin vers le fichier JSON
 
     Returns:
-        thetas(numpy.ndarray) : matrice des poids
-        mu (list[float] : moyenne colonne par colonne
-        sigma (list[float]) :ecart-type colonne par colonne
-        inv_house_map (dict[int, str]) : nom des differente maison
+        model_weights (numpy.ndarray): matrice des poids
+        feature_means (list[float]): moyenne colonne par colonne
+        feature_standard_deviations (list[float]): ecart-type colonne par colonne
+        house_name_by_label (dict[int, str]): nom des differentes maisons
+        feature_names (list[str]): noms des matieres
     """
-    #ouvre et lire le JSON
-    with open(fichier, 'r') as f:
-        data = json.load(f)
-    #extrait les diferrent elements
-    thetas = np.array(data["thetas"])
-    mu = data["mu"]
-    sigma = data["sigma"]
-    #reconvetie les cles en int
-    inv_house_map = {int(k): v for k, v in data["inv_house_map"].items()}
-    features = data["features"]
+    with open(weights_file_path, "r") as weights_file:
+        model_payload = json.load(weights_file)
 
-    return thetas, mu, sigma, inv_house_map, features
+    model_weights = np.array(model_payload["thetas"])
+    feature_means = model_payload["mu"]
+    feature_standard_deviations = model_payload["sigma"]
+    house_name_by_label = {
+        int(label): house_name
+        for label, house_name in model_payload["inv_house_map"].items()
+    }
+    feature_names = model_payload["features"]
 
-def get_numeric_features(df):
+    return (
+        model_weights,
+        feature_means,
+        feature_standard_deviations,
+        house_name_by_label,
+        feature_names,
+    )
+
+
+def get_numeric_feature_columns(data_frame):
     """
-    Identifie et retourne les colonnes numériques correspondant aux matières.
+    Identifie et retourne les colonnes numeriques correspondant aux matieres.
 
     Args:
-        df (pandas.DataFrame): Données complètes du fichier.
+        data_frame (pandas.DataFrame): donnees completes du fichier.
 
     Returns:
-        list of str: Liste des noms de colonnes numériques, excluant 'Index'.
+        list[str]: noms de colonnes numeriques, excluant 'Index' et 'Hogwarts House'.
     """
-    # Initialisation de la liste des colonnes numériques
-    numeric_cols = []
-    # Parcours de chaque colonne du DataFrame
-    for col in df.columns:
-        # df[col] renvoie une Series contenant toutes les valeurs de la colonne
-        # df[col].dtype.kind renvoie un code à un caractère pour le type :
-        #   'i' pour int, 'f' pour float, 'O' pour object (texte), 'M' pour datetime, etc.
-        kind = df[col].dtype.kind
-        # On sélectionne uniquement les colonnes dont le type est entier ou flottant
-        if kind in ("i", "f"):
-            numeric_cols.append(col)
-    # Exclusion de la colonne 'Index' si elle apparaît dans les numériques
-    if "Index" in numeric_cols:
-        numeric_cols.remove("Index")
-    # Exclusion de la colonne 'House' si elle apparaît dans les numériques
-    if "Hogwarts House" in numeric_cols:
-        numeric_cols.remove("Hogwarts House")
-    return numeric_cols
+    numeric_column_names = []
+    for column_name in data_frame.columns:
+        column_kind = data_frame[column_name].dtype.kind
+        if column_kind in ("i", "f"):
+            numeric_column_names.append(column_name)
 
-def load_and_prepare_data_test(path, features):
+    if "Index" in numeric_column_names:
+        numeric_column_names.remove("Index")
+    if "Hogwarts House" in numeric_column_names:
+        numeric_column_names.remove("Hogwarts House")
+
+    return numeric_column_names
+
+
+def load_test_dataset(input_csv_path, feature_names):
     """
-    Lis le fichier dataset_test.csv
+    Lit le fichier dataset_test.csv.
 
-    Arg :
-        path : chemin du fichier dataset_test.csv
-        features : liste des colonnes attendues depuis weights.json
-    Return :
-        index_list (list[int]) : liste des index du dataset test
-        X_test_df (pandas.DataFrame) : colonnes de matieres dans le bon ordre
+    Args:
+        input_csv_path (str): chemin du fichier dataset_test.csv
+        feature_names (list[str]): colonnes attendues depuis weights.json
+
+    Returns:
+        student_index_list (list[int]): liste des index du dataset test
+        test_feature_frame (pandas.DataFrame): colonnes de matieres dans le bon ordre
     """
-    df = pd.read_csv(path)
+    test_data_frame = pd.read_csv(input_csv_path)
 
-    if "Index" not in df.columns:
+    if "Index" not in test_data_frame.columns:
         raise ValueError("La colonne 'Index' est manquante dans le fichier test.")
 
-    missing = [c for c in features if c not in df.columns]
-    if missing:
-        raise ValueError(f"Colonnes manquantes dans le fichier test: {missing}")
+    missing_feature_names = [
+        feature_name for feature_name in feature_names
+        if feature_name not in test_data_frame.columns
+    ]
+    if missing_feature_names:
+        raise ValueError(f"Colonnes manquantes dans le fichier test: {missing_feature_names}")
 
-    index_list = df["Index"].tolist()
-    X_test_df = df[features].copy()
+    student_index_list = test_data_frame["Index"].tolist()
+    test_feature_frame = test_data_frame[feature_names].copy()
 
-    return index_list, X_test_df
+    return student_index_list, test_feature_frame
 
-def normalize_test_features(X_test_df, mu, sigma):
+
+def normalize_test_features(test_feature_frame, feature_means, feature_standard_deviations):
     """
-    normalise les feature de data_testen utilisant les paramettre
-        calculer pendant l'entraiment(mu et sigma)
+    Normalise les features de test avec les parametres du train.
 
-    Arg :
-        X_test_df(panda.dataFrame): Feature brute du data_test
-        mu (list[float]): moyenne des matieres colonne calculer par train
-        sigma (list[float]): ecart-type colonne calculer par train
-    Return:
-        X_test_norm(numpy.ndarray): Matrice normaliser
+    Args:
+        test_feature_frame (pandas.DataFrame): features brutes du dataset test
+        feature_means (list[float]): moyenne des matieres calculee au train
+        feature_standard_deviations (list[float]): ecart-type calcule au train
+
+    Returns:
+        numpy.ndarray: matrice normalisee
     """
-    # Converti mu et sigma en array pour pouvoir faire les operation
-    mu = np.array(mu, dtype=float)
-    sigma = np.array(sigma, dtype=float)
-    # sigma safe (évite division par 0)
-    sigma_safe = np.where(sigma == 0, 1.0, sigma)
-    
-    # Convertir en float (DataFrame) et IMPUTER NaN colonne par colonne
-    X_df = X_test_df.astype(float).copy()
-    for j, col in enumerate(X_df.columns):
-        # remplace NaN par la moyenne d'entraînement
-        X_df[col] = X_df[col].fillna(mu[j])
-    X = X_df.values.astype(float)
-    # Normaliser chaque valeur: (x_ij - mu_j) / sigma_j
-    # On soustrait la moyenne de la colonne (on centre),
-    # On divise par l’écart-type (on réduit).
-    X_norm = (X - mu) / sigma_safe
-    return X_norm
+    feature_means = np.array(feature_means, dtype=float)
+    feature_standard_deviations = np.array(feature_standard_deviations, dtype=float)
+    safe_standard_deviations = np.where(feature_standard_deviations == 0, 1.0, feature_standard_deviations)
 
-def prediction_house(X_test_bias, thetas, inv_house_map):
+    filled_test_feature_frame = test_feature_frame.astype(float).copy()
+    for feature_index, column_name in enumerate(filled_test_feature_frame.columns):
+        filled_test_feature_frame[column_name] = filled_test_feature_frame[column_name].fillna(
+            feature_means[feature_index]
+        )
+
+    test_feature_matrix = filled_test_feature_frame.values.astype(float)
+    normalized_test_feature_matrix = (test_feature_matrix - feature_means) / safe_standard_deviations
+    return normalized_test_feature_matrix
+
+
+def predict_houses(test_feature_matrix_with_bias, model_weights, house_name_by_label):
     """
-    Predit la maison de chaque eleve a partir de la matrice de features
-    deja normalisee et les poids appris
+    Predit la maison de chaque eleve a partir des features test et des poids appris.
 
-    Arg:
-        X_test_bias(numpy.ndarray)
-        thetas(numpy.ndarray) : matrice des poids
-        inv_house_map (dict[int, str]) : nom des differente maison
+    Args:
+        test_feature_matrix_with_bias (numpy.ndarray): matrice test avec colonne biais
+        model_weights (numpy.ndarray): matrice des poids
+        house_name_by_label (dict[int, str]): nom des differentes maisons
 
-    Return: 
-        predicted_house(list[str]):Liste des maison predi pour chaque eleve
+    Returns:
+        list[str]: maison predite pour chaque eleve
     """
-    #Calcule le score pour chaque eleve et chaque maison :
-    # score[i, k] = kmatrice m x K (m = eleve et K = matiere)
-    scores = X_test_bias.dot(thetas.T)
-    #sigmoide pour convertir les scores en probabilite pour donner des score entre 0 et 1
-    scores = np.clip(scores, -500, 500)
-    probs = 1 / (1 + np.exp(-scores))
-    # Selection de la maison avec la probabililte maximal
-    pred_label = np.argmax(probs, axis=1)
-    # Convertion de label numerique  en nom de maison
-    prediction_house = [inv_house_map[int(k)] for k in pred_label]
-    return prediction_house
+    class_scores = test_feature_matrix_with_bias.dot(model_weights.T)
+    class_scores = np.clip(class_scores, -500, 500)
+    class_probabilities = 1 / (1 + np.exp(-class_scores))
+    predicted_label_indices = np.argmax(class_probabilities, axis=1)
+    predicted_house_labels = [
+        house_name_by_label[int(label_index)] for label_index in predicted_label_indices
+    ]
+    return predicted_house_labels
+
 
 def main():
     try:
-        # Parser les arguments
-        args = parse_args()
-        # charger les paramettre apris
-        thetas, mu, sigma, inv_house_map, features = load_weights(args.weights)
-        # print(f"thetas = {thetas}, mu = {mu}, sigma = {sigma}, inv_house = {inv_house_map}")
-        # charger le dataset de test
-        index_list, X_test_df = load_and_prepare_data_test(args.input_csv, features)
-        # print(f"test_df = {X_test_df}")
-        # apliquer la meme normaliser que pour dataset_train
-        X_test_norm = normalize_test_features(X_test_df, mu, sigma)
-        # Ajouter la colonne biais
-        # m = nombre d’élèves (lignes dans X_norm)
-        m = X_test_norm.shape[0]
-        # Ajouter la colonne biais
-        # np.ones((m, 1)) = Crée une colonne de 1 (un 1 pour chaque élève)
-        X_test_bias = np.hstack([np.ones((m, 1)), X_test_norm])
-        # Predire la maison de chaque eleve
-        predict_house = prediction_house(X_test_bias, thetas, inv_house_map)
-        # Sauvegerder les prediction dans houses.csv
-        df_out = pd.DataFrame({
-            "Index": index_list,
-            "Hogwarts House": predict_house
-        })
-        df_out.to_csv(args.out, index=False)
-        print(f"→ Fichier de prediction enregistres dans {args.out}")
+        command_line_arguments = parse_command_line_arguments()
+        (
+            model_weights,
+            feature_means,
+            feature_standard_deviations,
+            house_name_by_label,
+            feature_names,
+        ) = load_model_parameters(command_line_arguments.weights_file_path)
 
-    except Exception as e:
-        print(f"Une erreur est survenue : {e}")
+        student_index_list, test_feature_frame = load_test_dataset(
+            command_line_arguments.input_csv_path,
+            feature_names
+        )
+
+        normalized_test_feature_matrix = normalize_test_features(
+            test_feature_frame,
+            feature_means,
+            feature_standard_deviations
+        )
+
+        student_count = normalized_test_feature_matrix.shape[0]
+        test_feature_matrix_with_bias = np.hstack(
+            [np.ones((student_count, 1)), normalized_test_feature_matrix]
+        )
+
+        predicted_house_labels = predict_houses(
+            test_feature_matrix_with_bias,
+            model_weights,
+            house_name_by_label
+        )
+
+        prediction_output_frame = pd.DataFrame(
+            {"Index": student_index_list, "Hogwarts House": predicted_house_labels}
+        )
+        prediction_output_frame.to_csv(command_line_arguments.output_csv_path, index=False)
+        print(
+            f"→ Fichier de prediction enregistre dans {command_line_arguments.output_csv_path}"
+        )
+
+    except Exception as exception:
+        print(f"Une erreur est survenue : {exception}")
+
 
 if __name__ == "__main__":
     main()
-
-

@@ -1,227 +1,224 @@
 import argparse
-import os
 import json
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 
-def parse_args():
+def parse_command_line_arguments():
     """
     Parse les arguments de la ligne de commande pour logreg_train.py.
 
     Returns:
         Namespace: contient les attributs suivants
-          - input_csv (str)      : chemin vers dataset_train.csv
-          - alpha (float)        : taux d'apprentissage (learning rate)
-          - iterations (int)     : nombre d'itérations de gradient descent
-          - out (str)            : chemin du fichier de sortie pour les poids
+          - input_csv_path (str): chemin vers dataset_train.csv
+          - learning_rate (float): taux d'apprentissage
+          - iteration_count (int): nombre d'iterations de gradient descent
+          - output_weights_path (str): chemin du fichier de sortie pour les poids
     """
-    parser = argparse.ArgumentParser(
-        description="Entraîner un classifieur logistisque one-vs-all et sauvegarder les poids."
+    argument_parser = argparse.ArgumentParser(
+        description="Entrainer un classifieur logistique one-vs-all et sauvegarder les poids."
     )
-    parser.add_argument(
-        "input_csv",
-        help="Chemin vers le fichier d'entraînement (dataset_train.csv)."
+    argument_parser.add_argument(
+        "input_csv_path",
+        help="Chemin vers le fichier d'entrainement (dataset_train.csv)."
     )
-    parser.add_argument(
+    argument_parser.add_argument(
         "--alpha", "-a",
+        dest="learning_rate",
         type=float,
         default=0.01,
-        help="Taux d'apprentissage pour la descente de gradient (défaut : 0.01)."
+        help="Taux d'apprentissage pour la descente de gradient (defaut : 0.01)."
     )
-    parser.add_argument(
+    argument_parser.add_argument(
         "--iterations", "-n",
+        dest="iteration_count",
         type=int,
         default=1000,
-        help="Nombre d'itérations de gradient descent (défaut : 1000)."
+        help="Nombre d'iterations de gradient descent (defaut : 1000)."
     )
-    parser.add_argument(
+    argument_parser.add_argument(
         "--out", "-o",
+        dest="output_weights_path",
         default="weights.json",
-        help="Fichier de sortie pour les poids entraînés (défaut : 'weights.json')."
+        help="Fichier de sortie pour les poids entraines (defaut : 'weights.json')."
     )
-    return parser.parse_args()
+    return argument_parser.parse_args()
 
-def get_numeric_features(df):
+
+def get_numeric_feature_columns(data_frame):
     """
-    Identifie et retourne les colonnes numériques correspondant aux matières.
+    Identifie et retourne les colonnes numeriques correspondant aux matieres.
 
     Args:
-        df (pandas.DataFrame): Données complètes du fichier.
+        data_frame (pandas.DataFrame): donnees completes du fichier.
 
     Returns:
-        list of str: Liste des noms de colonnes numériques, excluant 'Index'.
+        list[str]: noms de colonnes numeriques, excluant 'Index'.
     """
-    # Initialisation de la liste des colonnes numériques
-    numeric_cols = []
-    # Parcours de chaque colonne du DataFrame
-    for col in df.columns:
-        # df[col] renvoie une Series contenant toutes les valeurs de la colonne
-        # df[col].dtype.kind renvoie un code à un caractère pour le type :
-        #   'i' pour int, 'f' pour float, 'O' pour object (texte), 'M' pour datetime, etc.
-        kind = df[col].dtype.kind
-        # On sélectionne uniquement les colonnes dont le type est entier ou flottant
-        if kind in ("i", "f"):
-            numeric_cols.append(col)
-    # Exclusion de la colonne 'Index' si elle apparaît dans les numériques
-    if "Index" in numeric_cols:
-        numeric_cols.remove("Index")
-    return numeric_cols
+    numeric_column_names = []
+    for column_name in data_frame.columns:
+        column_kind = data_frame[column_name].dtype.kind
+        if column_kind in ("i", "f"):
+            numeric_column_names.append(column_name)
 
-def load_and_prepare_data(path):
+    if "Index" in numeric_column_names:
+        numeric_column_names.remove("Index")
+
+    return numeric_column_names
+
+
+def load_and_prepare_training_data(input_csv_path):
     """
-    Lit le CSV d'entraînement et prépare X, y pour l'entraînement.
-
-    Étapes :
-    1. Lecture du fichier CSV via pandas.
-    2. Suppression des lignes comportant des NaN dans les colonnes de notes ou dans 'Hogwarts House'.
-    3. Extraction de X : les 13 colonnes numériques correspondant aux matières.
-    4. Extraction de y : encodage de 'Hogwarts House' en entiers 0–3.
-    5. Retourne :
-         - X (pandas.DataFrame) : les features numériques,
-         - y (list[int])        : la liste des labels encodés,
-         - house_map (dict)     : mapping maison → label numérique,
-         - inv_house_map (dict) : mapping label numérique → maison (pour la prédiction).
-    """
-    df = pd.read_csv(path)
-
-    # On enlève tout élève ne disposant pas d'une valeur pour la maison
-    # ou pour au moins une matière (pour garantir X et y alignés).
-    df = df.dropna(subset=['Hogwarts House'] + get_numeric_features(df))
-
-    # get_numeric_features(df) renvoie la liste des matières (colonnes de notes).
-    # reset_index(drop=True) réindexe les élèves de 0 à m-1
-    features = get_numeric_features(df)
-    X = df[features].reset_index(drop=True)
-
-    # 4. Encoder y (cible) en entiers
-    # 'houses' contient la liste des noms de chaque maison.
-    # 'house_map' associe chaque nom de maison à un entier unique (0,1,2,3).
-    # 'inv_house_map' permet d'inverser ce mapping pour la prédiction.
-    # 'y' devient une liste d'entiers correspondant à chaque élève. Exemple : [0, 2, 1, 3, 2, ...] 0 = Gryffindor, 1 = Hufflepuff, etc
-    houses = ["Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin"]
-    house_map = {h:i for i,h in enumerate(houses)}
-    inv_house_map = {idx: house for house, idx in house_map.items()}
-    y = df['Hogwarts House'].map(house_map).tolist()
-
-    return X, y, house_map, inv_house_map, features
-
-def normalize_features(X_df):
-    """
-    Centre et réduit les features "from scratch".
+    Lit le CSV d'entrainement et prepare X, y pour l'entrainement.
 
     Returns:
-        X_norm (numpy): matrice normalisée prêt à être utilisé pour la descente de gradient.
-        mu (vecteur): moyennes de chaque colonne.
-        sigma (vecteur): écart-types de chaque colonne.
+        training_feature_frame (pandas.DataFrame): features numeriques
+        house_label_indices (list[int]): labels encodes (0-3)
+        house_label_by_name (dict[str, int]): mapping maison -> label
+        house_name_by_label (dict[int, str]): mapping label -> maison
+        feature_names (list[str]): noms des matieres
     """
-    # Convertir le DataFrame en numpy array de floats
-    X = X_df.values.astype(float)
-    # Calculer la moyenne de chaque colonne (feature)
-    # Ex : mu[0] = moyenne des notes d’Arithmancy, etc.
-    mu = X.mean(axis=0)
-    # Calculer l'écart-type (population) de chaque colonne
-    sigma = X.std(axis=0, ddof=0)
-    # Normaliser chaque valeur: (x_ij - mu_j) / sigma_j
-    # On soustrait la moyenne de la colonne (on centre),
-    # On divise par l’écart-type (on réduit).
-    X_norm = (X - mu) / sigma
-    # Retourner la matrice normalisée et les paramètres de normalisation sous forme de listes
-    # JSON ne sait PAS stocker des tableau NumPy donc on converti en list
-    return X_norm, mu.tolist(), sigma.tolist()
+    training_data_frame = pd.read_csv(input_csv_path)
+
+    training_data_frame = training_data_frame.dropna(
+        subset=["Hogwarts House"] + get_numeric_feature_columns(training_data_frame)
+    )
+
+    feature_names = get_numeric_feature_columns(training_data_frame)
+    training_feature_frame = training_data_frame[feature_names].reset_index(drop=True)
+
+    house_names = ["Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin"]
+    house_label_by_name = {house_name: index for index, house_name in enumerate(house_names)}
+    house_name_by_label = {label: house_name for house_name, label in house_label_by_name.items()}
+    house_label_indices = training_data_frame["Hogwarts House"].map(house_label_by_name).tolist()
+
+    return (
+        training_feature_frame,
+        house_label_indices,
+        house_label_by_name,
+        house_name_by_label,
+        feature_names,
+    )
 
 
-def sigmoid(z):
-    """Fonction sigmoïde."""
-    return 1.0 / (1.0 + np.exp(-z))
-
-
-def train_one_vs_all(X, y, alpha, num_iters):
+def normalize_feature_matrix(training_feature_frame):
     """
-    Entraîne un classifieur logistique one-vs-all.
+    Centre et reduit les features.
+
+    Returns:
+        normalized_feature_matrix (numpy.ndarray): matrice normalisee
+        feature_means (list[float]): moyennes de chaque colonne
+        feature_standard_deviations (list[float]): ecart-types de chaque colonne
+    """
+    raw_feature_matrix = training_feature_frame.values.astype(float)
+    feature_means = raw_feature_matrix.mean(axis=0)
+    feature_standard_deviations = raw_feature_matrix.std(axis=0, ddof=0)
+    normalized_feature_matrix = (
+        raw_feature_matrix - feature_means
+    ) / feature_standard_deviations
+
+    return (
+        normalized_feature_matrix,
+        feature_means.tolist(),
+        feature_standard_deviations.tolist(),
+    )
+
+
+def compute_sigmoid(values):
+    """Fonction sigmoide."""
+    return 1.0 / (1.0 + np.exp(-values))
+
+
+def train_one_vs_all_classifier(
+    training_matrix_with_bias,
+    house_label_indices,
+    learning_rate,
+    iteration_count,
+):
+    """
+    Entraine un classifieur logistique one-vs-all.
 
     Args:
-        X (tableau numpy): matrice normalisée avec biais ajouté au debut.
-        y (vecteur numpy): Chaque valeur est un entier 0, 1, 2 ou 3 (label pour chaque maison).
-        alpha (float): learning rate. (taille des "pas"0.01) args.alpha 
-        num_iters (int): nombre d'itérations. args.iteration 1000
+        training_matrix_with_bias (numpy.ndarray): matrice normalisee avec biais
+        house_label_indices (numpy.ndarray): labels entiers 0, 1, 2 ou 3
+        learning_rate (float): taux d'apprentissage
+        iteration_count (int): nombre d'iterations
 
     Returns:
-        thetas (matrice): poids de dimension (K, n+1).
+        numpy.ndarray: matrice des poids de dimension (K, n+1)
     """
-    # Récupérer dimensions de X
-    # m = nombre d'exemples d'entraînement(nb de ligne)
-    # n = nombre de paramètres nb de colonne (13 features + 1 biais)
-    m, n = X.shape
-    # Identifier les classes uniques dans y(maison de 0 a 3)
-    maison = np.unique(y)
-    # K = nombre total de de maison(4)
-    K = len(maison)
-    # print(f"m = {m} n = {n} maison = {maison} k = {K}")
+    student_count, feature_count_with_bias = training_matrix_with_bias.shape
+    unique_house_labels = np.unique(house_label_indices)
+    house_count = len(unique_house_labels)
+    model_weights = np.zeros((house_count, feature_count_with_bias))
 
-    # On crée une matrice de poids de taille (K maisons, n features+1 biais)
-    # initialisée à 0
-    thetas = np.zeros((K, n))
+    for house_label in unique_house_labels:
+        current_house_weights = np.zeros(feature_count_with_bias)
+        is_current_house = (house_label_indices == house_label).astype(float)
 
-    # Parcourir chaque maison pour entraîner un classifieur binaire
-    for k in maison:
-        # Initialiser les poids theta pour la classe k
-        theta = np.zeros(n)
-        # Binariser y : yk[i] = 1 si l'eleve appartient à la maison k, sinon 0
-        yk = (y == k).astype(float)
+        for _ in range(iteration_count):
+            predicted_probabilities = compute_sigmoid(
+                training_matrix_with_bias.dot(current_house_weights)
+            )
+            weight_gradient = (1 / student_count) * training_matrix_with_bias.T.dot(
+                predicted_probabilities - is_current_house
+            )
+            current_house_weights -= learning_rate * weight_gradient
 
-        # Descente de gradient pour cette classe
-        # On prédit la probabilité d’être dans la maison k pour chaque élève (h)
-        for _ in range(num_iters):
-            # Calculer la prédiction sigmoïde pour tous les m exemples : h = g(X · theta)
-            h = sigmoid(X.dot(theta))
-            # Calculer le gradient du cost w.r.t. theta : (1/m) * X^T · (h - yk)
-            grad = (1/m) * X.T.dot(h - yk)
-            # Mettre à jour les paramètres : theta ← theta - alpha * gradient
-            theta -= alpha * grad
+        model_weights[int(house_label), :] = current_house_weights
 
-        # Stocker la solution finale pour la classe k dans la matrice thetas
-        thetas[int(k), :] = theta
-
-    # Retourner la matrice des poids formée de K vecteurs theta
-    return thetas
+    return model_weights
 
 
 def main():
     try:
-        # Parser les arguments
-        args = parse_args()
-        # Chargement et préparation
-        X_df, y, house_map, inv_house_map, features = load_and_prepare_data(args.input_csv)
-        # Normalisation
-        X_norm, mu, sigma = normalize_features(X_df)
-        # Ajouter la colonne biais
-        # m = nombre d’élèves (lignes dans X_norm)
-        m = X_norm.shape[0]
-        # Ajouter la colonne biais
-        # np.ones((m, 1)) = Crée une colonne de 1 (un 1 pour chaque élève)
-        X_bias = np.hstack([np.ones((m, 1)), X_norm])
-        # Entraînement
-        thetas = train_one_vs_all(X_bias, y, args.alpha, args.iterations)
-        # Sauvegarde
-        output = {
-            'thetas': thetas.tolist(),
-            'mu': mu,
-            'sigma': sigma,
-            'features': features,
-            'house_map': house_map,
-            'inv_house_map': inv_house_map
-        }
-        # ouvre le fichier "weights.json" en ecriture
-        # Le fichier ouvert sera accessible via la variable f
-        with open(args.out, 'w') as f:
-            # Écrit (sauvegarde) l’objet Python output au format JSON dans le fichier
-            json.dump(output, f)
-        print(f"→ Poids et paramètres enregistrés dans {args.out}")
+        command_line_arguments = parse_command_line_arguments()
+        (
+            training_feature_frame,
+            house_label_indices,
+            house_label_by_name,
+            house_name_by_label,
+            feature_names,
+        ) = load_and_prepare_training_data(command_line_arguments.input_csv_path)
 
-    except Exception as e:
-        print(f"Une erreur est survenue : {e}")
+        (
+            normalized_feature_matrix,
+            feature_means,
+            feature_standard_deviations,
+        ) = normalize_feature_matrix(training_feature_frame)
+
+        student_count = normalized_feature_matrix.shape[0]
+        training_matrix_with_bias = np.hstack(
+            [np.ones((student_count, 1)), normalized_feature_matrix]
+        )
+
+        model_weights = train_one_vs_all_classifier(
+            training_matrix_with_bias,
+            house_label_indices,
+            command_line_arguments.learning_rate,
+            command_line_arguments.iteration_count,
+        )
+
+        output_payload = {
+            "thetas": model_weights.tolist(),
+            "mu": feature_means,
+            "sigma": feature_standard_deviations,
+            "features": feature_names,
+            "house_map": house_label_by_name,
+            "inv_house_map": house_name_by_label,
+        }
+
+        with open(command_line_arguments.output_weights_path, "w") as output_file:
+            json.dump(output_payload, output_file)
+
+        print(
+            f"→ Poids et parametres enregistres dans {command_line_arguments.output_weights_path}"
+        )
+
+    except Exception as exception:
+        print(f"Une erreur est survenue : {exception}")
+
 
 if __name__ == "__main__":
     main()
