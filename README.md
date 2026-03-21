@@ -1,168 +1,292 @@
-# DSLR Project 42 AI
+# DSLR (42) - DataScience x Logistic Regression
 
-Ce projet a pour objectif de recréer le "chapeau magique" (Sorting Hat) de Poudlard à l'aide d'un algorithme de régression logistique multi-classe implémenté "from scratch".
+<div align="center">
 
-## Structure du projet
+![Python](https://img.shields.io/badge/Python-3.x-3776AB?logo=python&logoColor=white) ![NumPy](https://img.shields.io/badge/NumPy-dans%20requirements-013243?logo=numpy&logoColor=white) ![pandas](https://img.shields.io/badge/pandas-dans%20requirements-150458?logo=pandas&logoColor=white) ![matplotlib](https://img.shields.io/badge/matplotlib-dans%20requirements-11557C) ![scikit--learn](https://img.shields.io/badge/scikit--learn-dans%20requirements%20%28benchmark%29-F7931E?logo=scikitlearn&logoColor=white)
 
+</div>
+
+
+Projet de classification multi-classe pour le sujet **DSLR** de 42.
+Le but est de reconstruire un "Sorting Hat" avec une **régression logistique one-vs-all** implémentée sans fonctions "heavy-lifting" interdites par le sujet.
+
+## Table des matières
+
+- [1. Vue d'ensemble](#1-vue-densemble)
+- [2. Objectifs du projet](#2-objectifs-du-projet)
+- [3. Contexte pédagogique (42 / IA / ML)](#3-contexte-pédagogique-42--ia--ml)
+- [4. Quick start (3 minutes)](#4-quick-start-3-minutes)
+- [5. Prérequis](#5-prérequis)
+- [6. Installation](#6-installation)
+- [7. Utilisation](#7-utilisation)
+- [8. Scripts obligatoires du sujet DSLR](#8-scripts-obligatoires-du-sujet-dslr)
+- [9. Entrées / sorties importantes](#9-entrées--sorties-importantes)
+- [10. Commandes Make](#10-commandes-make)
+- [11. Structure du projet](#11-structure-du-projet)
+- [12. Tests, qualité et outils de dev](#12-tests-qualité-et-outils-de-dev)
+- [13. Conformité au sujet DSLR (checklist)](#13-conformité-au-sujet-dslr-checklist)
+- [14. Troubleshooting](#14-troubleshooting)
+- [15. Bonus / améliorations possibles](#15-bonus--améliorations-possibles)
+- [16. Stack technique](#16-stack-technique)
+- [17. Ressources](#17-ressources)
+- [18. Licence](#18-licence)
+- [19. Auteur](#19-auteur)
+
+## 1. Vue d'ensemble
+
+Ce dépôt contient :
+- des scripts d'exploration de données (`describe`, `histogram`, `scatter_plot`, `pair_plot`) ;
+- un entraînement de régression logistique multi-classe (`logreg_train`) ;
+- une prédiction (`logreg_predict`) qui génère `houses.csv`.
+
+Le flux principal est :
+`comprendre les données -> visualiser -> entraîner -> prédire -> comparer`.
+
+## 2. Objectifs du projet
+
+- Implémenter une analyse descriptive sans `DataFrame.describe()`.
+- Répondre aux 3 questions de visualisation imposées par le sujet.
+- Implémenter une régression logistique **one-vs-all**.
+- Utiliser la **descente de gradient** pour l'entraînement.
+- Générer `houses.csv` au format attendu.
+
+## 3. Contexte pédagogique (42 / IA / ML)
+
+Ce projet fait partie du cursus 42 autour de l'IA/ML :
+- lecture et nettoyage d'un dataset ;
+- visualisation pour guider la sélection de features ;
+- classification supervisée multi-classe.
+
+Le sujet impose une partie technique, mais aussi une capacité à expliquer les notions (mean/std/quartiles, normalisation, one-vs-all, etc.) pendant la soutenance.
+
+## 4. Quick start (3 minutes)
+
+```bash
+# 1) Cloner
+ git clone git@github.com:Sycourbi/dslr.git
+ cd dslr
+
+# 2) Installer l'environnement
+ make
+
+# 3) Pipeline minimum
+ make describe
+ make train
+ make predict
 ```
+
+Résultats attendus :
+- `make describe` affiche les stats en console.
+- `make train` crée `weights.json`.
+- `make predict` crée `houses.csv`.
+
+## 5. Prérequis
+
+- `python3` (version minimale officielle : `[À compléter]`)
+- `make`
+- accès shell Linux/macOS (ou équivalent)
+
+Dépendances Python installées depuis `requirements.txt` :
+- `numpy`
+- `pandas`
+- `matplotlib`
+- `scikit-learn` (utile pour le benchmark, pas pour l'algorithme "from scratch")
+
+## 6. Installation
+
+### Option A (recommandée)
+
+```bash
+make
+```
+
+Cette commande exécute `make install` :
+- création de `.venv` ;
+- installation des dépendances via `pip install -r requirements.txt`.
+
+
+## 7. Utilisation
+
+### 7.1 Exploration des données
+
+```bash
+make describe
+make histogram
+make scatter
+make pair
+```
+
+Sorties générées :
+- `visuals/histogram.png`
+- `visuals/scatter.png`
+- `visuals/pair_plot.png`
+
+### 7.2 Entraînement et prédiction
+
+```bash
+make train
+make predict
+```
+
+Sorties générées :
+- `weights.json`
+- `houses.csv`
+
+### 7.3 Exemple en ligne de commande (sans Make)
+
+```bash
+.venv/bin/python scripts/logreg_train.py datasets/dataset_train.csv --alpha 0.01 --iterations 1000 --out weights.json
+.venv/bin/python scripts/logreg_predict.py datasets/dataset_test.csv weights.json --out houses.csv
+```
+
+## 8. Scripts obligatoires du sujet DSLR
+
+| Script | Statut sujet | Question/objectif | Entrée principale | Sortie principale |
+|---|---|---|---|---|
+| `scripts/describe.py` | `Obligatoire` | Afficher `count/mean/std/min/25%/50%/75%/max` des features numériques | `dataset_train.csv` | Affichage console |
+| `scripts/histogram.py` | `Obligatoire` | Trouver un cours avec distribution homogène entre maisons | `dataset_train.csv` | `visuals/histogram.png` |
+| `scripts/scatter_plot.py` | `Obligatoire` | Trouver deux features similaires | `dataset_train.csv` | `visuals/scatter.png` |
+| `scripts/pair_plot.py` | `Obligatoire` | Visualiser les paires pour choisir les features du modèle | `dataset_train.csv` | `visuals/pair_plot.png` |
+| `scripts/logreg_train.py` | `Obligatoire` | Entraîner la régression logistique multi-classe one-vs-all via gradient descent | `dataset_train.csv` | `weights.json` |
+| `scripts/logreg_predict.py` | `Obligatoire` | Prédire et générer le fichier de rendu | `dataset_test.csv` + `weights.json` | `houses.csv` |
+
+## 9. Entrées / sorties importantes
+
+### Fichiers d'entrée
+
+- `datasets/dataset_train.csv`
+  - contient la cible `Hogwarts House` (pour l'entraînement)
+- `datasets/dataset_test.csv`
+  - utilisé pour la prédiction
+
+### Fichiers de sortie
+
+- `weights.json`
+  - paramètres du modèle entraîné (`thetas`, `mu`, `sigma`, `features`, mapping des classes)
+- `houses.csv`
+  - format attendu :
+
+```csv
+Index,Hogwarts House
+0,Gryffindor
+1,Hufflepuff
+...
+```
+
+## 10. Commandes Make
+
+```bash
+make install     # crée .venv + installe requirements
+make describe    # stats descriptives
+make histogram   # histogramme
+make scatter     # scatter plot
+make pair        # pair plot
+make train       # entraîne et écrit weights.json
+make predict     # prédit et écrit houses.csv
+make clean       # supprime sorties générées
+make re          # clean + install
+make help        # affiche l'aide
+```
+
+## 11. Structure du projet
+
+```text
 dslr/
-├─ datasets/
-│   ├─ dataset_train.csv
-│   └─ dataset_test.csv
-├─ scripts/
-│   ├─ describe.py
-│   ├─ histogram.py
-│   ├─ scatter_plot.py
-│   ├─ pair_plot.py
-│   ├─ logreg_train.py
-│   └─ logreg_predict.py
-├─ requirement.txt
-├─ Makefile
-└─ README.md
+├── datasets/
+│   ├── dataset_train.csv
+│   └── dataset_test.csv
+├── scripts/
+│   ├── describe.py
+│   ├── histogram.py
+│   ├── scatter_plot.py
+│   ├── pair_plot.py
+│   ├── logreg_train.py
+│   └── logreg_predict.py
+├── scikit/
+│   └── benchmark_sklearn_vs_mine.py
+├── Makefile
+├── requirements.txt
+├── dslr.subject.pdf
+└── README.md
 ```
 
-## Prérequis
+## 12. Tests, qualité et outils de dev
 
-* Python 3.8+
+### Ce qui est présent
 
-## Installation
-
-1. Cloner le dépôt & naviguer dans le dossier :
-
-   ```bash
-   git clone <url_du_repo>
-   cd dslr
-   ```
-2. Installer les dépendances :
-
-   ```bash
-   make
-   ```
-
-## Usage des scripts
-
-Chaque script se trouve dans le dossier `scripts/` et comporte une aide intégrée :
+- Script de comparaison optionnel :
 
 ```bash
-.venv/bin/python scripts/<nom_du_script>.py --help
+.venv/bin/python scikit/benchmark_sklearn_vs_mine.py \
+  datasets/dataset_train.csv \
+  datasets/dataset_test.csv \
+  houses.csv
 ```
 
-### 1. `describe.py`
-
-**Objectif** : Calculer et afficher les statistiques descriptives de chaque colonne numérique d'un fichier CSV, sans utiliser `DataFrame.describe()`.
+Ce script entraîne un modèle scikit-learn, génère `houses_sklearn.csv`, puis compare avec `houses.csv`.
 
 
-**Fonctionnalités** :
+## 13. Conformité au sujet DSLR (checklist)
 
-* Identification des colonnes numériques
-* Calcul manuel de :
+### Obligatoire sujet
 
-  * `count` combien d’élèves ont une note enregistrée(exclut les vides)
-  * `mean` la moyenne des notes
-  * `std` l’écart-type (mesure de la dispersion)
-  * `Min / Max` la note la plus basse et la plus haute
-  * Quartiles `25%`, `50%` (médiane), `75%`
-* Affichage formaté en tableau dans la console
+- `describe` présent : `Oui`
+- `histogram` présent : `Oui`
+- `scatter_plot` présent : `Oui`
+- `pair_plot` présent : `Oui`
+- `logreg_train` présent : `Oui`
+- `logreg_predict` présent : `Oui`
+- Logique multi-classe `one-vs-all` : `Oui` (dans `logreg_train.py`)
+- Descente de gradient : `Oui` (dans `logreg_train.py`)
+- Génération de `houses.csv` : `Oui` (dans `logreg_predict.py`)
 
-**Exemple d'utilisation** :
+### Points d'évaluation importants à connaître
 
-```bash
-.venv/bin/python scripts/describe.py datasets/dataset_train.csv
-```
+- Pas de fonctions interdites qui font tout le travail dans `describe`.
+- Format de sortie `houses.csv` strict.
+- Objectif de précision à la soutenance : minimum `98%` (selon le sujet/grille).
+- Bonus évalués seulement si le mandatory est parfait.
 
-* Le script lit `dataset_train.csv` (jeu d'entraînement), calcule les statistiques pour chaque colonne numérique et affiche un tableau comme :
+## 14. Troubleshooting
 
-| Statistique | Astronomy | History |
-| ----------- | --------- | ------- |
-| Count       | 395       | 395     |
-| Mean        | 66.5      | 72.1    |
-| Std         | 10.2      | 12.4    |
-| Min         | 30        | 35      |
-| 25%         | 58        | 62      |
-| 50%         | 67        | 71      |
-| 75%         | 75        | 84      |
-| Max         | 100       | 100     |
+- Erreur `No such file or directory: 'weights.json'` lors de `make predict`
+  - Cause : `make train` non exécuté (ou `weights.json` supprimé).
+  - Fix : relancer `make train`, puis `make predict`.
+
+- `python3-venv is missing`
+  - Le `Makefile` tente automatiquement un fallback avec `virtualenv` utilisateur.
+
+- Aucune image générée
+  - Vérifier que le dossier de sortie existe (`visuals/`) ou passer `-o <dossier>`.
+
+## 15. Bonus / améliorations possibles
+
+`Bonus sujet` (liste du PDF) :
+- ajouter d'autres métriques dans `describe`
+- implémenter une descente stochastique du gradient
+- implémenter d'autres algorithmes d'optimisation (GD par lots/GD par mini-lots/etc.) nombre d'échantillons
+
+## 16. Stack technique
+
+- Langage : `Python`
+- Data : `pandas`, `numpy`
+- Visualisation : `matplotlib`
+- Référence de comparaison : `scikit-learn` (script optionnel)
+- Orchestration locale : `Makefile`
+
+## 17. Ressources
+
+- [Scikit-learn](https://scikit-learn.org/stable/)
+- [Matplotlib](https://matplotlib.org/)
+- [NumPy](https://numpy.org/)
+- [Pandas](https://pandas.pydata.org/)
+
+## 18. Licence
+
+MIT License.
+
+## 19. Auteurs
 
 
-### 2. `histogram.py`
-
-**Objectif** : Tracer et analyser les distributions des notes pour chaque matière, afin d'identifier la matière avec la distribution la plus homogène, et sauvegarder les histogrammes générés.
-
-```bash
-.venv/bin/python scripts/histogram.py datasets/dataset_train.csv
-```
-### 3. `scatter_plot.py`
-
-**Objectif** : Générer un nuage de points entre deux features pour visualiser les relations et identifier des corrélations potentielles.
-
-```bash
-.venv/bin/python scripts/scatter_plot.py datasets/dataset_train.csv
-```
-
-### 4. `pair_plot.py`
-
-**Objectif** :  Afficher la matrice complète de scatter plots pour toutes les paires de colonnes numériques, facilitant la sélection des variables pour la modélisation.
-
-```bash
-.venv/bin/python scripts/pair_plot.py datasets/dataset_train.csv
-```
-### 5. `logreg_train.py`
-
-**Objectif** : Utiliser `dataset_train.csv` pour entraîner les modèles de régression logistique multi-classe (one-vs-all) via descente de gradient et sauvegarder les poids.
-
-```bash
-.venv/bin/python scripts/logreg_train.py datasets/dataset_train.csv
-```
-### 6. `logreg_predict.py`
-
-**Objectif** : Utiliser `dataset_test.csv` et les poids entraînés pour prédire la maison de chaque élève en calculant les probabilités, puis générer le fichier de soumission `houses.csv`.
-
-```bash
-.venv/bin/python scripts/logreg_predict.py datasets/dataset_test.csv weights.json
-```
-
-### Différence entre `dataset_train.csv` et `dataset_test.csv`
-
-* **`dataset_train.csv`** : jeu de données d'entraînement complet
-
-  * Contient les **features** (notes, attributs élèves, etc.) **et** la colonne cible `Hogwarts House`
-  * Utilisé pour :
-
-    1. **Exploration** (describe, visualisations)
-    2. **Entraînement** des modèles de régression logistique (logreg\_train.py)
-
-* **`dataset_test.csv`** : jeu de données de test sans la maison assignée
-
-  * Contient uniquement les mêmes **features** que le train, **sans** la colonne `Hogwarts House`
-  * Utilisé pour :
-
-    1. **Prédiction** (logreg\_predict.py) en chargeant les poids obtenus
-    2. Génération du fichier de soumission `houses.csv`
-
-### Comparer avec scikit 
-```bash
-.venv/bin/python scikit/benchmark_sklearn_vs_mine.py datasets/dataset_train.csv datasets/dataset_test.csv houses.csv
-```
-**Objectif** : Utiliser scikit pour entrainer, predire puis creer houses_sklearn.csv et le comparer avec houses.csv
-
-Interprétation
-
-Common indexes : 400
-→ les deux fichiers contiennent bien les 400 mêmes élèves
-
-Same predictions: 400
-→ pour chaque élève, la maison prédite est la même
-
-Agreement : 1.0000
-→ 100 % d’accord
-
-No disagreement found.
-→ aucune différence entre houses.csv et houses_sklearn.csv
-
-## Lien utils
-
-https://scikit-learn.org/stable/
-
-## Licence
-
-MIT
+- **Sylvanna Courbis** — [LinkedIn](https://www.linkedin.com/in/sylvanna-courbis-7626b63a7/) · [GitHub](https://github.com/Sycourbi)
+- **Rafael Verissimo** — [LinkedIn](https://www.linkedin.com/in/verissimo-rafael/) · [GitHub](https://github.com/raveriss)
