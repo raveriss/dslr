@@ -179,9 +179,12 @@ Sorties générées :
 
 ```csv
 Index,Hogwarts House
-0,Gryffindor
-1,Hufflepuff
+0,Hufflepuff
+1,Ravenclaw
+2,Gryffindor
 ...
+398,Ravenclaw
+399,Ravenclaw
 ```
 
 ## 10. Commandes Make
