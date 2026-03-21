@@ -4,6 +4,11 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 
+
+DEFAULT_FIG_WIDTH = 16.0
+DEFAULT_FIG_HEIGHT = 9.0
+DEFAULT_DPI = 120
+
 def parse_arg():
     """
     Parse les arguments de la ligne de commande.
@@ -25,6 +30,24 @@ def parse_arg():
         "--outdir", "-o",
         default="visuals",
         help="Dossier de sortie pour les PNG (défaut : 'visualization')."
+    )
+    parser.add_argument(
+        "--width",
+        type=float,
+        default=DEFAULT_FIG_WIDTH,
+        help="Largeur de la figure en pouces (défaut : 16)."
+    )
+    parser.add_argument(
+        "--height",
+        type=float,
+        default=DEFAULT_FIG_HEIGHT,
+        help="Hauteur de la figure en pouces (défaut : 9)."
+    )
+    parser.add_argument(
+        "--dpi",
+        type=int,
+        default=DEFAULT_DPI,
+        help="Résolution de sortie PNG (défaut : 120, soit 1920x1080 en 16x9)."
     )
     return parser.parse_args()
 
@@ -55,7 +78,7 @@ def get_numeric_features(df):
         numeric_cols.remove("Index")
     return numeric_cols
 
-def plot_pair_plot(df, features, outdir):
+def plot_pair_plot(df, features, outdir, width, height, dpi):
     """
     Trace et sauvegarde un pair plot (matrice d'histogrammes et scatter plots)
     pour toutes les features numériques, coloré par maison.
@@ -66,8 +89,24 @@ def plot_pair_plot(df, features, outdir):
         outdir (str): Dossier de sortie pour le PNG.
     """
     n = len(features)
-    # Préparer figure de taille adaptée
-    fig, axes = plt.subplots(n, n, figsize=(n * 1.5, n * 1.5), squeeze=False)
+    fig = plt.figure(figsize=(width, height))
+
+    # On remplit presque toute la largeur de la figure pour exploiter le format 16:9.
+    margin_left = 0.06
+    margin_right = 0.995
+    margin_bottom = 0.18
+    margin_top = 0.92
+    grid = fig.add_gridspec(
+        n,
+        n,
+        left=margin_left,
+        right=margin_right,
+        bottom=margin_bottom,
+        top=margin_top,
+        wspace=0.04,
+        hspace=0.04,
+    )
+    axes = [[fig.add_subplot(grid[i, j]) for j in range(n)] for i in range(n)]
 
     # Palette de couleurs par maison
     houses = df['Hogwarts House'].dropna().unique()
@@ -85,7 +124,6 @@ def plot_pair_plot(df, features, outdir):
                 # Histogramme univarié
                 # vals = df[f1].dropna()
                 # ax.hist(vals, bins=10, color='gray', alpha=0.7)
-                ax.set_ylabel(f1, fontsize=6)
                 ax.set_yticks([])
                 ax.set_xticks([])
             else:
@@ -105,24 +143,37 @@ def plot_pair_plot(df, features, outdir):
                 ax.set_xticks([])
             # Only label outer axes
             if i == n - 1:
-                ax.set_xlabel(f2, fontsize=6)
-            if j == 0 and i != j:
-                ax.set_ylabel(f1, fontsize=6)
+                ax.set_xlabel(f2, fontsize=5, rotation=45, ha='right')
+            if j == 0:
+                ax.set_ylabel(
+                    f1,
+                    fontsize=4.5,
+                    rotation=45,
+                    ha='right',
+                    va='center',
+                    labelpad=10,
+                )
 
-    # Légende globale
-    legend_ax = fig.add_subplot(111, frame_on=False)
-    legend_ax.axis('off')
+    # Légende globale centrée en bas.
+    handles = []
     for house in houses:
-        legend_ax.scatter([], [], color=color_dict[house], label=house)
-    legend_ax.legend(title='Maison', loc='upper center', ncol=len(houses), fontsize=6)
+        handle = plt.Line2D([], [], marker='o', linestyle='', color=color_dict[house], label=house)
+        handles.append(handle)
+    fig.legend(
+        handles=handles,
+        title='Maison',
+        loc='lower center',
+        bbox_to_anchor=(0.5, 0.01),
+        ncol=len(houses),
+        fontsize=9,
+    )
 
-    plt.tight_layout(rect=[0, 0, 1, 0.95])
     title = 'Pair Plot des matières'
-    fig.suptitle(title, fontsize=10)
+    fig.suptitle(title, fontsize=10, y=0.975)
 
     os.makedirs(outdir, exist_ok=True)
     outpath = os.path.join(outdir, 'pair_plot.png')
-    fig.savefig(outpath)
+    fig.savefig(outpath, dpi=dpi)
     plt.close(fig)
     print(f"→ pair_plot.png créé dans {outdir}/")
 
@@ -135,7 +186,7 @@ def main():
     # Identifier les colonnes numériques (features)
     features = get_numeric_features(df)
     # Générer et sauvegarder le pair plot
-    plot_pair_plot(df, features, args.outdir)
+    plot_pair_plot(df, features, args.outdir, args.width, args.height, args.dpi)
     
 if __name__ == "__main__":
     main()

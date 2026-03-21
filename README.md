@@ -121,6 +121,17 @@ Sorties générées :
 - `visuals/scatter.png`
 - `visuals/pair_plot.png`
 
+Format par défaut des visuels :
+- `1920x1080` (`16:9`) pour `histogram`, `scatter` et `pair_plot` (affichage homogène sur écran PC portable).
+
+### 7.1.1 Correspondance commandes -> graphiques
+
+| Commande | Graphique généré | Aperçu |
+|---|---|---|
+| `make histogram` | `histogram` | ![Histogram example](docs/assets/histogram.png) |
+| `make scatter` | `scatter plot` | ![Scatter plot example](docs/assets/scatter.png) |
+| `make pair` | `pair plot` | ![Pair plot example](docs/assets/pair_plot.png) |
+
 ### 7.2 Entraînement et prédiction
 
 ```bash

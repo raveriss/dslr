@@ -4,6 +4,11 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 
+
+DEFAULT_FIG_WIDTH = 16.0
+DEFAULT_FIG_HEIGHT = 9.0
+DEFAULT_DPI = 120
+
 def parse_arg():
     """
     Parse les arguments de la ligne de commande.
@@ -25,6 +30,24 @@ def parse_arg():
         "--outdir", "-o",
         default="visuals",
         help="Dossier de sortie pour les PNG"
+    )
+    parser.add_argument(
+        "--width",
+        type=float,
+        default=DEFAULT_FIG_WIDTH,
+        help="Largeur de la figure en pouces (défaut : 16)."
+    )
+    parser.add_argument(
+        "--height",
+        type=float,
+        default=DEFAULT_FIG_HEIGHT,
+        help="Hauteur de la figure en pouces (défaut : 9)."
+    )
+    parser.add_argument(
+        "--dpi",
+        type=int,
+        default=DEFAULT_DPI,
+        help="Résolution de sortie PNG (défaut : 120, soit 1920x1080 en 16x9)."
     )
     return parser.parse_args()
 
@@ -116,7 +139,7 @@ def find_most_similar_features(df, features):
 
     return best_pair, best_score
 
-def plot_scatter_for_best_pair(df, best_pair, outdir):
+def plot_scatter_for_best_pair(df, best_pair, outdir, width, height, dpi):
     """
     Trace et sauvegarde un scatter plot comparant les deux features les plus similaires,
     coloré par maison avec légende.
@@ -138,28 +161,29 @@ def plot_scatter_for_best_pair(df, best_pair, outdir):
     data = df.loc[mask, [f1, f2, 'Hogwarts House']]
 
     # Tracer
-    plt.figure(figsize=(8, 6))
+    fig, ax = plt.subplots(figsize=(width, height))
     for house in houses:
         subset = data[data['Hogwarts House'] == house]
-        plt.scatter(
+        ax.scatter(
             subset[f1],
             subset[f2],
             alpha=0.7,
             label=house,
             color=color_dict[house]
         )
-    plt.title("Scatter plot")
-    plt.xlabel(f1)
-    plt.ylabel(f2)
-    plt.legend(title="Maison")
-    plt.grid(True)
+    ax.set_title("Scatter plot")
+    ax.set_xlabel(f1)
+    ax.set_ylabel(f2)
+    ax.legend(title="Maison")
+    ax.grid(True)
+    fig.tight_layout()
 
     # Sauvegarde
     os.makedirs(outdir, exist_ok=True)
     fname = f"scatter.png"
     path = os.path.join(outdir, fname)
-    plt.savefig(path)
-    plt.close()
+    fig.savefig(path, dpi=dpi)
+    plt.close(fig)
     print(f"→ Scatter plot créé : {path}")
 
 def main():
@@ -176,7 +200,14 @@ def main():
         # print(f"best_ pair = ", best_pair)
         # print(f"best_score = ", best_score)
         # creer le fichier de sortie
-        plot_scatter_for_best_pair(df, best_pair, args.outdir)
+        plot_scatter_for_best_pair(
+            df,
+            best_pair,
+            args.outdir,
+            args.width,
+            args.height,
+            args.dpi,
+        )
 
     except Exception as e:
         print(f"Une erreur est survenue : {e}")

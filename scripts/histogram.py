@@ -5,6 +5,11 @@ import os
 import matplotlib.pyplot as plt
 
 
+DEFAULT_FIG_WIDTH = 16.0
+DEFAULT_FIG_HEIGHT = 9.0
+DEFAULT_DPI = 120
+
+
 # Quel cours de Poudlard a une distribution de notes homogène entre les quatre maisons ?
 def parse_args():
     """
@@ -34,6 +39,24 @@ def parse_args():
         "--outdir", "-o",
         default="visuals",
         help="Dossier de sortie pour les PNG (défaut : 'visualization')."
+    )
+    parser.add_argument(
+        "--width",
+        type=float,
+        default=DEFAULT_FIG_WIDTH,
+        help="Largeur de la figure en pouces (défaut : 16)."
+    )
+    parser.add_argument(
+        "--height",
+        type=float,
+        default=DEFAULT_FIG_HEIGHT,
+        help="Hauteur de la figure en pouces (défaut : 9)."
+    )
+    parser.add_argument(
+        "--dpi",
+        type=int,
+        default=DEFAULT_DPI,
+        help="Résolution de sortie PNG (défaut : 120, soit 1920x1080 en 16x9)."
     )
     return parser.parse_args()
 
@@ -82,7 +105,7 @@ def find_most_homogeneous(df, features, houses):
 
     return best_feature
 
-def one_histogram(df, feature, houses, bins, outdir):
+def one_histogram(df, feature, houses, bins, outdir, width, height, dpi):
     """
     Trace tous les histogrammes des matières dans une grille 3×4 et sauvegarde
     le résultat dans un seul PNG.
@@ -96,7 +119,7 @@ def one_histogram(df, feature, houses, bins, outdir):
     """
 
     # 1. Créer une figure avec 3 lignes et 4 colonnes de sous-plots
-    fig, ax = plt.subplots(figsize=(10, 6))
+    fig, ax = plt.subplots(figsize=(width, height))
 
     for house in houses:
         vals = df[df["Hogwarts House"] == house][feature].dropna()
@@ -112,7 +135,7 @@ def one_histogram(df, feature, houses, bins, outdir):
     plt.tight_layout()
     # 4. Enreg_scatteristrer le fichier unique
     outfile = os.path.join(outdir, "histogram.png")
-    fig.savefig(outfile)
+    fig.savefig(outfile, dpi=dpi)
     plt.close(fig)
     print(f"→ histogram.png créé dans {outdir}/")
 
@@ -133,7 +156,16 @@ def main():
         os.makedirs(args.outdir, exist_ok=True)
         # Trace et sauvegarde un histogramme superposé pour chaque feature.
         # all_histograms(df, features, houses, args.bins, args.outdir)
-        one_histogram(df, best_feature, houses, args.bins, args.outdir)
+        one_histogram(
+            df,
+            best_feature,
+            houses,
+            args.bins,
+            args.outdir,
+            args.width,
+            args.height,
+            args.dpi,
+        )
     
     except Exception as e:
         print(f"Une erreur est survenue : {e}")
