@@ -14,10 +14,10 @@ def parse_command_line_arguments():
           - input_csv_path (str): chemin vers dataset_train.csv
           - learning_rate (float): taux d'apprentissage
           - iteration_count (int): nombre d'iterations de gradient descent
-          - output_weights_path (str): chemin du fichier de sortie pour les poids
+          - output_parameter_path (str): chemin du fichier de sortie des parametres appris
     """
     argument_parser = argparse.ArgumentParser(
-        description="Entrainer un classifieur logistique one-vs-all et sauvegarder les poids."
+        description="Entrainer un classifieur logistique one-vs-all et sauvegarder ses parametres."
     )
     argument_parser.add_argument(
         "input_csv_path",
@@ -39,26 +39,26 @@ def parse_command_line_arguments():
     )
     argument_parser.add_argument(
         "--out", "-o",
-        dest="output_weights_path",
+        dest="output_parameter_path",
         default="weights.json",
-        help="Fichier de sortie pour les poids entraines (defaut : 'weights.json')."
+        help="Fichier de sortie des parametres appris (defaut : 'weights.json')."
     )
     return argument_parser.parse_args()
 
 
-def get_numeric_feature_columns(data_frame):
+def get_numeric_subject_score_columns(dataset_table):
     """
     Identifie et retourne les colonnes numeriques correspondant aux matieres.
 
     Args:
-        data_frame (pandas.DataFrame): donnees completes du fichier.
+        dataset_table (pandas.DataFrame): donnees completes du fichier.
 
     Returns:
         list[str]: noms de colonnes numeriques, excluant 'Index'.
     """
     numeric_column_names = []
-    for column_name in data_frame.columns:
-        column_kind = data_frame[column_name].dtype.kind
+    for column_name in dataset_table.columns:
+        column_kind = dataset_table[column_name].dtype.kind
         if column_kind in ("i", "f"):
             numeric_column_names.append(column_name)
 
@@ -68,71 +68,77 @@ def get_numeric_feature_columns(data_frame):
     return numeric_column_names
 
 
-def load_and_prepare_training_data(input_csv_path):
+def load_and_prepare_training_dataset(input_csv_path):
     """
     Lit le CSV d'entrainement et prepare X, y pour l'entrainement.
 
     Returns:
-        training_feature_frame (pandas.DataFrame): features numeriques
-        house_label_indices (list[int]): labels encodes (0-3)
-        house_label_by_name (dict[str, int]): mapping maison -> label
-        house_name_by_label (dict[int, str]): mapping label -> maison
-        feature_names (list[str]): noms des matieres
+        training_subject_score_table (pandas.DataFrame): notes numeriques par matiere
+        target_house_code_array (numpy.ndarray): codes maisons attendus (0-3)
+        house_code_by_name (dict[str, int]): mapping maison -> code maison
+        house_name_by_code (dict[int, str]): mapping code maison -> maison
+        subject_score_column_names (list[str]): noms des matieres
     """
-    training_data_frame = pd.read_csv(input_csv_path)
+    training_dataset_table = pd.read_csv(input_csv_path)
+    numeric_subject_score_columns = get_numeric_subject_score_columns(training_dataset_table)
 
-    training_data_frame = training_data_frame.dropna(
-        subset=["Hogwarts House"] + get_numeric_feature_columns(training_data_frame)
+    training_dataset_table = training_dataset_table.dropna(
+        subset=["Hogwarts House"] + numeric_subject_score_columns
     )
 
-    feature_names = get_numeric_feature_columns(training_data_frame)
-    training_feature_frame = training_data_frame[feature_names].reset_index(drop=True)
+    subject_score_column_names = get_numeric_subject_score_columns(training_dataset_table)
+    training_subject_score_table = (
+        training_dataset_table[subject_score_column_names].reset_index(drop=True)
+    )
 
     house_names = ["Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin"]
-    house_label_by_name = {house_name: index for index, house_name in enumerate(house_names)}
-    house_name_by_label = {label: house_name for house_name, label in house_label_by_name.items()}
-    house_label_indices = training_data_frame["Hogwarts House"].map(house_label_by_name).tolist()
+    house_code_by_name = {house_name: code for code, house_name in enumerate(house_names)}
+    house_name_by_code = {code: house_name for house_name, code in house_code_by_name.items()}
+    target_house_code_array = training_dataset_table["Hogwarts House"].map(
+        house_code_by_name
+    ).to_numpy(dtype=int)
 
     return (
-        training_feature_frame,
-        house_label_indices,
-        house_label_by_name,
-        house_name_by_label,
-        feature_names,
+        training_subject_score_table,
+        target_house_code_array,
+        house_code_by_name,
+        house_name_by_code,
+        subject_score_column_names,
     )
 
 
-def normalize_feature_matrix(training_feature_frame):
+def standardize_discipline_scores(training_discipline_score_table):
     """
-    Centre et reduit les features.
+    Centre et reduit les notes par matiere.
+    Formule appliquee: (note_eleve_matiere - moyenne_matiere) / ecart_type_matiere.
 
     Returns:
-        normalized_feature_matrix (numpy.ndarray): matrice normalisee
-        feature_means (list[float]): moyennes de chaque colonne
-        feature_standard_deviations (list[float]): ecart-types de chaque colonne
+        standardized_discipline_scores (numpy.ndarray): notes normalisees
+        average_score_by_discipline (list[float]): moyenne de chaque matiere
+        standard_deviation_by_discipline (list[float]): ecart-type de chaque matiere
     """
-    raw_feature_matrix = training_feature_frame.values.astype(float)
-    feature_means = raw_feature_matrix.mean(axis=0)
-    feature_standard_deviations = raw_feature_matrix.std(axis=0, ddof=0)
-    normalized_feature_matrix = (
-        raw_feature_matrix - feature_means
-    ) / feature_standard_deviations
+    discipline_scores_by_student = training_discipline_score_table.to_numpy(dtype=float)
+    average_score_by_discipline = discipline_scores_by_student.mean(axis=0)
+    standard_deviation_by_discipline = discipline_scores_by_student.std(axis=0, ddof=0)
+    standardized_discipline_scores = (
+        discipline_scores_by_student - average_score_by_discipline
+    ) / standard_deviation_by_discipline
 
     return (
-        normalized_feature_matrix,
-        feature_means.tolist(),
-        feature_standard_deviations.tolist(),
+        standardized_discipline_scores,
+        average_score_by_discipline.tolist(),
+        standard_deviation_by_discipline.tolist(),
     )
 
 
-def compute_sigmoid(values):
+def compute_sigmoid(linear_score_array):
     """Fonction sigmoide."""
-    return 1.0 / (1.0 + np.exp(-values))
+    return 1.0 / (1.0 + np.exp(-linear_score_array))
 
 
-def train_one_vs_all_classifier(
-    training_matrix_with_bias,
-    house_label_indices,
+def fit_one_vs_rest_house_classifier(
+    standardized_scores_with_intercept,
+    target_house_code_array,
     learning_rate,
     iteration_count,
 ):
@@ -140,80 +146,84 @@ def train_one_vs_all_classifier(
     Entraine un classifieur logistique one-vs-all.
 
     Args:
-        training_matrix_with_bias (numpy.ndarray): matrice normalisee avec biais
-        house_label_indices (numpy.ndarray): labels entiers 0, 1, 2 ou 3
+        standardized_scores_with_intercept (numpy.ndarray): notes normalisees + terme d'interception
+        target_house_code_array (numpy.ndarray): codes maisons 0, 1, 2 ou 3
         learning_rate (float): taux d'apprentissage
         iteration_count (int): nombre d'iterations
 
     Returns:
-        numpy.ndarray: matrice des poids de dimension (K, n+1)
+        numpy.ndarray: tableau des coefficients de dimension (K, n+1)
     """
-    student_count, feature_count_with_bias = training_matrix_with_bias.shape
-    unique_house_labels = np.unique(house_label_indices)
-    house_count = len(unique_house_labels)
-    model_weights = np.zeros((house_count, feature_count_with_bias))
+    student_count, predictor_count_with_intercept = standardized_scores_with_intercept.shape
+    distinct_house_codes = np.unique(target_house_code_array)
+    house_count = len(distinct_house_codes)
+    house_coefficient_table = np.zeros((house_count, predictor_count_with_intercept))
 
-    for house_label in unique_house_labels:
-        current_house_weights = np.zeros(feature_count_with_bias)
-        is_current_house = (house_label_indices == house_label).astype(float)
+    for current_house_code in distinct_house_codes:
+        current_house_coefficients = np.zeros(predictor_count_with_intercept)
+        is_student_in_current_house = (
+            target_house_code_array == current_house_code
+        ).astype(float)
 
         for _ in range(iteration_count):
-            predicted_probabilities = compute_sigmoid(
-                training_matrix_with_bias.dot(current_house_weights)
+            predicted_house_probabilities = compute_sigmoid(
+                standardized_scores_with_intercept.dot(current_house_coefficients)
             )
-            weight_gradient = (1 / student_count) * training_matrix_with_bias.T.dot(
-                predicted_probabilities - is_current_house
+            coefficient_gradient = (
+                1 / student_count
+            ) * standardized_scores_with_intercept.T.dot(
+                predicted_house_probabilities - is_student_in_current_house
             )
-            current_house_weights -= learning_rate * weight_gradient
+            current_house_coefficients -= learning_rate * coefficient_gradient
 
-        model_weights[int(house_label), :] = current_house_weights
+        house_coefficient_table[int(current_house_code), :] = current_house_coefficients
 
-    return model_weights
+    return house_coefficient_table
 
 
 def main():
     try:
-        command_line_arguments = parse_command_line_arguments()
+        cli_arguments = parse_command_line_arguments()
         (
-            training_feature_frame,
-            house_label_indices,
-            house_label_by_name,
-            house_name_by_label,
-            feature_names,
-        ) = load_and_prepare_training_data(command_line_arguments.input_csv_path)
+            training_discipline_score_table,
+            target_house_codes,
+            house_code_by_name,
+            house_name_by_code,
+            discipline_score_column_names,
+        ) = load_and_prepare_training_dataset(cli_arguments.input_csv_path)
 
         (
-            normalized_feature_matrix,
-            feature_means,
-            feature_standard_deviations,
-        ) = normalize_feature_matrix(training_feature_frame)
+            standardized_discipline_scores,
+            average_score_by_discipline,
+            standard_deviation_by_discipline,
+        ) = standardize_discipline_scores(training_discipline_score_table)
 
-        student_count = normalized_feature_matrix.shape[0]
-        training_matrix_with_bias = np.hstack(
-            [np.ones((student_count, 1)), normalized_feature_matrix]
+        student_count = standardized_discipline_scores.shape[0]
+        standardized_discipline_scores_with_intercept = np.hstack(
+            [np.ones((student_count, 1)), standardized_discipline_scores]
         )
 
-        model_weights = train_one_vs_all_classifier(
-            training_matrix_with_bias,
-            house_label_indices,
-            command_line_arguments.learning_rate,
-            command_line_arguments.iteration_count,
+        house_coefficient_table = fit_one_vs_rest_house_classifier(
+            standardized_discipline_scores_with_intercept,
+            target_house_codes,
+            cli_arguments.learning_rate,
+            cli_arguments.iteration_count,
         )
 
-        output_payload = {
-            "thetas": model_weights.tolist(),
-            "mu": feature_means,
-            "sigma": feature_standard_deviations,
-            "features": feature_names,
-            "house_map": house_label_by_name,
-            "inv_house_map": house_name_by_label,
+        trained_parameter_bundle = {
+            "thetas": house_coefficient_table.tolist(),
+            "mu": average_score_by_discipline,
+            "sigma": standard_deviation_by_discipline,
+            "features": discipline_score_column_names,
+            "house_map": house_code_by_name,
+            "inv_house_map": house_name_by_code,
         }
 
-        with open(command_line_arguments.output_weights_path, "w") as output_file:
-            json.dump(output_payload, output_file)
+        with open(cli_arguments.output_parameter_path, "w") as output_file:
+            json.dump(trained_parameter_bundle, output_file)
 
         print(
-            f"→ Poids et parametres enregistres dans {command_line_arguments.output_weights_path}"
+            f"→ Poids et parametres enregistres dans {cli_arguments.output_parameter_path}"
         )
 
     except Exception as exception:
