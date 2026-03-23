@@ -68,38 +68,38 @@ def get_numeric_subject_score_columns(dataset_table):
     return numeric_column_names
 
 
-def load_and_prepare_training_dataset(input_csv_path):
+def load_and_prepare_dataset(input_csv_path):
     """
     Lit le CSV d'entrainement et prepare X, y pour l'entrainement.
 
     Returns:
-        training_subject_score_table (pandas.DataFrame): notes numeriques par matiere
+        discipline_score_table (pandas.DataFrame): notes numeriques par matiere
         target_house_code_array (numpy.ndarray): codes maisons attendus (0-3)
         house_code_by_name (dict[str, int]): mapping maison -> code maison
         house_name_by_code (dict[int, str]): mapping code maison -> maison
         subject_score_column_names (list[str]): noms des matieres
     """
-    training_dataset_table = pd.read_csv(input_csv_path)
-    numeric_subject_score_columns = get_numeric_subject_score_columns(training_dataset_table)
+    dataset_table = pd.read_csv(input_csv_path)
+    numeric_subject_score_columns = get_numeric_subject_score_columns(dataset_table)
 
-    training_dataset_table = training_dataset_table.dropna(
+    dataset_table = dataset_table.dropna(
         subset=["Hogwarts House"] + numeric_subject_score_columns
     )
 
-    subject_score_column_names = get_numeric_subject_score_columns(training_dataset_table)
-    training_subject_score_table = (
-        training_dataset_table[subject_score_column_names].reset_index(drop=True)
+    subject_score_column_names = get_numeric_subject_score_columns(dataset_table)
+    discipline_score_table = (
+        dataset_table[subject_score_column_names].reset_index(drop=True)
     )
 
     house_names = ["Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin"]
     house_code_by_name = {house_name: code for code, house_name in enumerate(house_names)}
     house_name_by_code = {code: house_name for house_name, code in house_code_by_name.items()}
-    target_house_code_array = training_dataset_table["Hogwarts House"].map(
+    target_house_code_array = dataset_table["Hogwarts House"].map(
         house_code_by_name
     ).to_numpy(dtype=int)
 
     return (
-        training_subject_score_table,
+        discipline_score_table,
         target_house_code_array,
         house_code_by_name,
         house_name_by_code,
@@ -107,7 +107,7 @@ def load_and_prepare_training_dataset(input_csv_path):
     )
 
 
-def standardize_discipline_scores(training_discipline_score_table):
+def standardize_discipline_scores(discipline_score_table):
     """
     Centre et reduit les notes par matiere.
     Formule appliquee: (note_eleve_matiere - moyenne_matiere) / ecart_type_matiere.
@@ -117,7 +117,7 @@ def standardize_discipline_scores(training_discipline_score_table):
         average_score_by_discipline (list[float]): moyenne de chaque matiere
         standard_deviation_by_discipline (list[float]): ecart-type de chaque matiere
     """
-    discipline_scores_by_student = training_discipline_score_table.to_numpy(dtype=float)
+    discipline_scores_by_student = discipline_score_table.to_numpy(dtype=float)
     average_score_by_discipline = discipline_scores_by_student.mean(axis=0)
     standard_deviation_by_discipline = discipline_scores_by_student.std(axis=0, ddof=0)
     standardized_discipline_scores = (
@@ -185,18 +185,18 @@ def main():
     try:
         cli_arguments = parse_command_line_arguments()
         (
-            training_discipline_score_table,
+            discipline_score_table,
             target_house_codes,
             house_code_by_name,
             house_name_by_code,
             discipline_score_column_names,
-        ) = load_and_prepare_training_dataset(cli_arguments.input_csv_path)
+        ) = load_and_prepare_dataset(cli_arguments.input_csv_path)
 
         (
             standardized_discipline_scores,
             average_score_by_discipline,
             standard_deviation_by_discipline,
-        ) = standardize_discipline_scores(training_discipline_score_table)
+        ) = standardize_discipline_scores(discipline_score_table)
 
         student_count = standardized_discipline_scores.shape[0]
         standardized_discipline_scores_with_intercept = np.hstack(
