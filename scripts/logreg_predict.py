@@ -11,15 +11,15 @@ def parse_command_line_arguments():
 
     Returns:
         Namespace: contient les attributs suivants
-          - input_csv_path (str): chemin vers dataset_test.csv
+          - dataset_csv_path (str): chemin vers le CSV des observations (ex: dataset_test.csv)
           - trained_parameter_file_path (str): fichier json contenant les parametres appris
           - output_csv_path (str): chemin du fichier de sortie a genere
     """
     argument_parser = argparse.ArgumentParser(
-        description="Predit la maison de chaque eleve a partir d'un dataset test et d'un fichier de parametres"
+        description="Predit la maison de chaque eleve a partir d'un dataset et d'un fichier de parametres"
     )
     argument_parser.add_argument(
-        "input_csv_path",
+        "dataset_csv_path",
         help="Chemin vers le fichier dataset_test.csv (sans colonne House)"
     )
     argument_parser.add_argument(
@@ -35,7 +35,7 @@ def parse_command_line_arguments():
     return argument_parser.parse_args()
 
 
-def load_house_classifier_components(trained_parameter_file_path):
+def load_house_classifier_parameters(trained_parameter_file_path):
     """
     Charge le fichier JSON contenant :
         - thetas : tableau des coefficients (K x n+1)
@@ -49,33 +49,33 @@ def load_house_classifier_components(trained_parameter_file_path):
 
     Returns:
         house_coefficient_table (numpy.ndarray): coefficients appris
-        subject_score_column_averages (list[float]): moyenne colonne par colonne
-        subject_score_column_std (list[float]): ecart-type colonne par colonne
+        average_score_by_discipline (list[float]): moyenne colonne par colonne
+        standard_deviation_by_discipline (list[float]): ecart-type colonne par colonne
         house_name_by_code (dict[int, str]): nom des differentes maisons
-        subject_score_column_names (list[str]): noms des matieres
+        discipline_score_column_names (list[str]): noms des matieres
     """
     with open(trained_parameter_file_path, "r") as parameter_file:
         trained_parameter_bundle = json.load(parameter_file)
 
     house_coefficient_table = np.array(trained_parameter_bundle["thetas"])
-    subject_score_column_averages = trained_parameter_bundle["mu"]
-    subject_score_column_std = trained_parameter_bundle["sigma"]
+    average_score_by_discipline = trained_parameter_bundle["mu"]
+    standard_deviation_by_discipline = trained_parameter_bundle["sigma"]
     house_name_by_code = {
         int(house_code_text): house_name
         for house_code_text, house_name in trained_parameter_bundle["inv_house_map"].items()
     }
-    subject_score_column_names = trained_parameter_bundle["features"]
+    discipline_score_column_names = trained_parameter_bundle["features"]
 
     return (
         house_coefficient_table,
-        subject_score_column_averages,
-        subject_score_column_std,
+        average_score_by_discipline,
+        standard_deviation_by_discipline,
         house_name_by_code,
-        subject_score_column_names,
+        discipline_score_column_names,
     )
 
 
-def get_numeric_subject_score_columns(dataset_table):
+def get_numeric_discipline_score_columns(dataset_table):
     """
     Identifie et retourne les colonnes numeriques correspondant aux matieres.
 
@@ -99,99 +99,105 @@ def get_numeric_subject_score_columns(dataset_table):
     return numeric_column_names
 
 
-def load_test_observation_inputs(input_csv_path, subject_score_column_names):
+def load_observations(dataset_csv_path, discipline_score_column_names):
     """
-    Lit le fichier dataset_test.csv.
+    Lit le fichier CSV des observations.
 
     Args:
-        input_csv_path (str): chemin du fichier dataset_test.csv
-        subject_score_column_names (list[str]): colonnes attendues depuis weights.json
+        dataset_csv_path (str): chemin du fichier CSV
+        discipline_score_column_names (list[str]): colonnes attendues depuis weights.json
 
     Returns:
-        student_index_list (list[int]): liste des index du dataset test
-        test_subject_score_table (pandas.DataFrame): colonnes de matieres dans le bon ordre
+        student_index_list (list[int]): liste des index du dataset
+        discipline_score_table (pandas.DataFrame): colonnes de matieres dans le bon ordre
     """
-    test_dataset_table = pd.read_csv(input_csv_path)
+    dataset_table = pd.read_csv(dataset_csv_path)
 
-    if "Index" not in test_dataset_table.columns:
-        raise ValueError("La colonne 'Index' est manquante dans le fichier test.")
+    if "Index" not in dataset_table.columns:
+        raise ValueError("La colonne 'Index' est manquante dans le fichier CSV.")
 
-    missing_subject_score_columns = [
-        subject_column_name for subject_column_name in subject_score_column_names
-        if subject_column_name not in test_dataset_table.columns
+    missing_discipline_score_columns = [
+        discipline_column_name for discipline_column_name in discipline_score_column_names
+        if discipline_column_name not in dataset_table.columns
     ]
-    if missing_subject_score_columns:
+    if missing_discipline_score_columns:
         raise ValueError(
-            f"Colonnes manquantes dans le fichier test: {missing_subject_score_columns}"
+            f"Colonnes manquantes dans le fichier CSV: {missing_discipline_score_columns}"
         )
 
-    student_index_list = test_dataset_table["Index"].tolist()
-    test_subject_score_table = test_dataset_table[subject_score_column_names].copy()
+    student_index_list = dataset_table["Index"].tolist()
+    discipline_score_table = dataset_table[discipline_score_column_names].copy()
 
-    return student_index_list, test_subject_score_table
+    return student_index_list, discipline_score_table
 
 
-def standardize_test_subject_scores(
-    test_subject_score_table,
-    subject_score_column_averages,
-    subject_score_column_std,
+def standardize_discipline_scores(
+    discipline_score_table,
+    average_score_by_discipline,
+    standard_deviation_by_discipline,
 ):
     """
-    Normalise les notes de test avec les parametres du train.
+    Normalise les notes du dataset avec les parametres du train.
 
     Args:
-        test_subject_score_table (pandas.DataFrame): notes brutes du dataset test
-        subject_score_column_averages (list[float]): moyenne des matieres calculee au train
-        subject_score_column_std (list[float]): ecart-type calcule au train
+        discipline_score_table (pandas.DataFrame): notes brutes du dataset
+        average_score_by_discipline (list[float]): moyenne des matieres calculee au train
+        standard_deviation_by_discipline (list[float]): ecart-type calcule au train
 
     Returns:
         numpy.ndarray: tableau normalise
     """
-    subject_score_column_averages = np.array(subject_score_column_averages, dtype=float)
-    subject_score_column_std = np.array(subject_score_column_std, dtype=float)
-    safe_subject_score_column_std = np.where(
-        subject_score_column_std == 0,
+    average_score_by_discipline = np.array(average_score_by_discipline, dtype=float)
+    standard_deviation_by_discipline = np.array(standard_deviation_by_discipline, dtype=float)
+    safe_standard_deviation_by_discipline = np.where(
+        standard_deviation_by_discipline == 0,
         1.0,
-        subject_score_column_std,
+        standard_deviation_by_discipline,
     )
 
-    completed_test_subject_score_table = test_subject_score_table.astype(float).copy()
-    for subject_column_index, column_name in enumerate(completed_test_subject_score_table.columns):
-        completed_test_subject_score_table[column_name] = (
-            completed_test_subject_score_table[column_name].fillna(
-                subject_score_column_averages[subject_column_index]
+    completed_discipline_score_table = discipline_score_table.astype(float).copy()
+    for discipline_column_index, column_name in enumerate(
+        completed_discipline_score_table.columns
+    ):
+        completed_discipline_score_table[column_name] = (
+            completed_discipline_score_table[column_name].fillna(
+                average_score_by_discipline[discipline_column_index]
             )
         )
 
-    test_subject_score_array = completed_test_subject_score_table.to_numpy(dtype=float)
-    standardized_test_subject_score_array = (
-        test_subject_score_array - subject_score_column_averages
-    ) / safe_subject_score_column_std
-    return standardized_test_subject_score_array
+    discipline_scores_by_student = completed_discipline_score_table.to_numpy(
+        dtype=float
+    )
+    standardized_discipline_scores = (
+        discipline_scores_by_student - average_score_by_discipline
+    ) / safe_standard_deviation_by_discipline
+    return standardized_discipline_scores
 
 
 def predict_house_names(
-    standardized_scores_with_intercept,
+    standardized_discipline_scores_with_intercept,
     house_coefficient_table,
     house_name_by_code,
 ):
     """
-    Predit la maison de chaque eleve a partir des notes test et des coefficients appris.
+    Predit la maison de chaque eleve a partir des notes du dataset et des coefficients appris.
 
     Args:
-        standardized_scores_with_intercept (numpy.ndarray): notes test normalisees + interception
+        standardized_discipline_scores_with_intercept (numpy.ndarray): notes normalisees + interception
         house_coefficient_table (numpy.ndarray): tableau des coefficients appris
         house_name_by_code (dict[int, str]): nom des differentes maisons
 
     Returns:
         list[str]: maison predite pour chaque eleve
     """
-    house_logit_table = standardized_scores_with_intercept.dot(house_coefficient_table.T)
+    house_logit_table = standardized_discipline_scores_with_intercept.dot(
+        house_coefficient_table.T
+    )
     house_logit_table = np.clip(house_logit_table, -500, 500)
     house_probability_table = 1 / (1 + np.exp(-house_logit_table))
-    predicted_house_code_array = np.argmax(house_probability_table, axis=1)
+    predicted_house_codes = np.argmax(house_probability_table, axis=1)
     predicted_house_names = [
-        house_name_by_code[int(house_code)] for house_code in predicted_house_code_array
+        house_name_by_code[int(house_code)] for house_code in predicted_house_codes
     ]
     return predicted_house_names
 
@@ -201,30 +207,30 @@ def main():
         cli_arguments = parse_command_line_arguments()
         (
             house_coefficient_table,
-            subject_score_column_averages,
-            subject_score_column_std,
+            average_score_by_discipline,
+            standard_deviation_by_discipline,
             house_name_by_code,
-            subject_score_column_names,
-        ) = load_house_classifier_components(cli_arguments.trained_parameter_file_path)
+            discipline_score_column_names,
+        ) = load_house_classifier_parameters(cli_arguments.trained_parameter_file_path)
 
-        student_index_list, test_subject_score_table = load_test_observation_inputs(
-            cli_arguments.input_csv_path,
-            subject_score_column_names
+        student_index_list, discipline_score_table = load_observations(
+            cli_arguments.dataset_csv_path,
+            discipline_score_column_names
         )
 
-        standardized_test_subject_score_array = standardize_test_subject_scores(
-            test_subject_score_table,
-            subject_score_column_averages,
-            subject_score_column_std
+        standardized_discipline_scores = standardize_discipline_scores(
+            discipline_score_table,
+            average_score_by_discipline,
+            standard_deviation_by_discipline
         )
 
-        student_count = standardized_test_subject_score_array.shape[0]
-        standardized_scores_with_intercept = np.hstack(
-            [np.ones((student_count, 1)), standardized_test_subject_score_array]
+        student_count = standardized_discipline_scores.shape[0]
+        standardized_discipline_scores_with_intercept = np.hstack(
+            [np.ones((student_count, 1)), standardized_discipline_scores]
         )
 
         predicted_house_names = predict_house_names(
-            standardized_scores_with_intercept,
+            standardized_discipline_scores_with_intercept,
             house_coefficient_table,
             house_name_by_code
         )
