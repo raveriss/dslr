@@ -46,26 +46,26 @@ def parse_command_line_arguments():
     return argument_parser.parse_args()
 
 
-def get_numeric_subject_score_columns(dataset_table):
+def get_discipline_names(dataset):
     """
-    Identifie et retourne les colonnes numeriques correspondant aux matieres.
+    Identifie et retourne les noms des disciplines numeriques.
 
     Args:
-        dataset_table (pandas.DataFrame): donnees completes du fichier.
+        dataset (pandas.DataFrame): donnees completes du fichier.
 
     Returns:
-        list[str]: noms de colonnes numeriques, excluant 'Index'.
+        list[str]: noms de disciplines, excluant 'Index'.
     """
-    numeric_column_names = []
-    for column_name in dataset_table.columns:
-        column_kind = dataset_table[column_name].dtype.kind
-        if column_kind in ("i", "f"):
-            numeric_column_names.append(column_name)
+    discipline_names = []
+    for discipline_name in dataset.columns:
+        discipline_kind = dataset[discipline_name].dtype.kind
+        if discipline_kind in ("i", "f"):
+            discipline_names.append(discipline_name)
 
-    if "Index" in numeric_column_names:
-        numeric_column_names.remove("Index")
+    if "Index" in discipline_names:
+        discipline_names.remove("Index")
 
-    return numeric_column_names
+    return discipline_names
 
 
 def load_and_prepare_dataset(input_csv_path):
@@ -73,41 +73,40 @@ def load_and_prepare_dataset(input_csv_path):
     Lit le CSV d'entrainement et prepare X, y pour l'entrainement.
 
     Returns:
-        discipline_score_table (pandas.DataFrame): notes numeriques par matiere
-        target_house_code_array (numpy.ndarray): codes maisons attendus (0-3)
+        student_discipline_scores (pandas.DataFrame): notes numeriques par matiere, sans la colonne Hogwarts House
+        assigned_house_codes_by_student (numpy.ndarray): codes maisons attendus (0-3)
         house_code_by_name (dict[str, int]): mapping maison -> code maison
         house_name_by_code (dict[int, str]): mapping code maison -> maison
-        subject_score_column_names (list[str]): noms des matieres
+        discipline_names (list[str]): noms des disciplines
     """
-    dataset_table = pd.read_csv(input_csv_path)
-    numeric_subject_score_columns = get_numeric_subject_score_columns(dataset_table)
+    raw_students_dataset = pd.read_csv(input_csv_path)
+    discipline_names = get_discipline_names(raw_students_dataset)
 
-    dataset_table = dataset_table.dropna(
-        subset=["Hogwarts House"] + numeric_subject_score_columns
+    students_with_complete_discipline_scores = raw_students_dataset.dropna(
+        subset=["Hogwarts House"] + discipline_names
     )
 
-    subject_score_column_names = get_numeric_subject_score_columns(dataset_table)
-    discipline_score_table = (
-        dataset_table[subject_score_column_names].reset_index(drop=True)
+    student_discipline_scores = (
+        students_with_complete_discipline_scores[discipline_names].reset_index(drop=True)
     )
 
     house_names = ["Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin"]
     house_code_by_name = {house_name: code for code, house_name in enumerate(house_names)}
     house_name_by_code = {code: house_name for house_name, code in house_code_by_name.items()}
-    target_house_code_array = dataset_table["Hogwarts House"].map(
+    assigned_house_codes_by_student = students_with_complete_discipline_scores["Hogwarts House"].map(
         house_code_by_name
     ).to_numpy(dtype=int)
 
     return (
-        discipline_score_table,
-        target_house_code_array,
+        student_discipline_scores,
+        assigned_house_codes_by_student,
         house_code_by_name,
         house_name_by_code,
-        subject_score_column_names,
+        discipline_names,
     )
 
 
-def standardize_discipline_scores(discipline_score_table):
+def standardize_discipline_scores(student_discipline_scores):
     """
     Centre et reduit les notes par matiere.
     Formule appliquee: (note_eleve_matiere - moyenne_matiere) / ecart_type_matiere.
@@ -117,7 +116,9 @@ def standardize_discipline_scores(discipline_score_table):
         average_score_by_discipline (list[float]): moyenne de chaque matiere
         standard_deviation_by_discipline (list[float]): ecart-type de chaque matiere
     """
-    discipline_scores_by_student = discipline_score_table.to_numpy(dtype=float)
+    discipline_scores_by_student = (
+        student_discipline_scores.to_numpy(dtype=float)
+    )
     average_score_by_discipline = discipline_scores_by_student.mean(axis=0)
     standard_deviation_by_discipline = discipline_scores_by_student.std(axis=0, ddof=0)
     standardized_discipline_scores = (
@@ -137,8 +138,8 @@ def compute_sigmoid(linear_score_array):
 
 
 def fit_one_vs_rest_house_classifier(
-    standardized_scores_with_intercept,
-    target_house_code_array,
+    student_discipline_scores_with_bias,
+    assigned_house_codes_by_student,
     learning_rate,
     iteration_count,
 ):
@@ -146,75 +147,78 @@ def fit_one_vs_rest_house_classifier(
     Entraine un classifieur logistique one-vs-all.
 
     Args:
-        standardized_scores_with_intercept (numpy.ndarray): notes normalisees + terme d'interception
-        target_house_code_array (numpy.ndarray): codes maisons 0, 1, 2 ou 3
+        student_discipline_scores_with_bias (numpy.ndarray): notes normalisees + colonne de bias
+        assigned_house_codes_by_student (numpy.ndarray): codes maisons 0, 1, 2 ou 3
         learning_rate (float): taux d'apprentissage
         iteration_count (int): nombre d'iterations
 
     Returns:
-        numpy.ndarray: tableau des coefficients de dimension (K, n+1)
+        numpy.ndarray: poids des maisons par discipline, avec le bias en colonne 0
     """
-    student_count, predictor_count_with_intercept = standardized_scores_with_intercept.shape
-    distinct_house_codes = np.unique(target_house_code_array)
-    house_count = len(distinct_house_codes)
-    house_coefficient_table = np.zeros((house_count, predictor_count_with_intercept))
+    student_count, discipline_plus_bias_count = student_discipline_scores_with_bias.shape
 
-    for current_house_code in distinct_house_codes:
-        current_house_coefficients = np.zeros(predictor_count_with_intercept)
-        is_student_in_current_house = (
-            target_house_code_array == current_house_code
+    unique_house_codes = np.unique(assigned_house_codes_by_student)
+    
+    house_count = len(unique_house_codes)
+    house_discipline_weights = np.zeros((house_count, discipline_plus_bias_count))
+
+
+    for current_house_code in unique_house_codes:
+        current_house_weights = np.zeros(discipline_plus_bias_count)
+        is_student_assigned_to_current_house = (
+            assigned_house_codes_by_student == current_house_code
         ).astype(float)
 
         for _ in range(iteration_count):
-            predicted_house_probabilities = compute_sigmoid(
-                standardized_scores_with_intercept.dot(current_house_coefficients)
+            predicted_probability_of_current_house = compute_sigmoid(
+                student_discipline_scores_with_bias.dot(current_house_weights)
             )
-            coefficient_gradient = (
+            current_house_weight_gradient = (
                 1 / student_count
-            ) * standardized_scores_with_intercept.T.dot(
-                predicted_house_probabilities - is_student_in_current_house
+            ) * student_discipline_scores_with_bias.T.dot(
+                predicted_probability_of_current_house - is_student_assigned_to_current_house
             )
-            current_house_coefficients -= learning_rate * coefficient_gradient
+            current_house_weights -= learning_rate * current_house_weight_gradient
 
-        house_coefficient_table[int(current_house_code), :] = current_house_coefficients
+        house_discipline_weights[int(current_house_code), :] = current_house_weights
 
-    return house_coefficient_table
+    return house_discipline_weights
 
 
 def main():
     try:
         cli_arguments = parse_command_line_arguments()
         (
-            discipline_score_table,
-            target_house_codes,
+            student_discipline_scores,
+            assigned_house_codes_by_student,
             house_code_by_name,
             house_name_by_code,
-            discipline_score_column_names,
+            discipline_names,
         ) = load_and_prepare_dataset(cli_arguments.input_csv_path)
 
         (
             standardized_discipline_scores,
             average_score_by_discipline,
             standard_deviation_by_discipline,
-        ) = standardize_discipline_scores(discipline_score_table)
+        ) = standardize_discipline_scores(student_discipline_scores)
 
         student_count = standardized_discipline_scores.shape[0]
-        standardized_discipline_scores_with_intercept = np.hstack(
+        student_discipline_scores_with_bias = np.hstack(
             [np.ones((student_count, 1)), standardized_discipline_scores]
         )
 
-        house_coefficient_table = fit_one_vs_rest_house_classifier(
-            standardized_discipline_scores_with_intercept,
-            target_house_codes,
+        house_discipline_weights = fit_one_vs_rest_house_classifier(
+            student_discipline_scores_with_bias,
+            assigned_house_codes_by_student,
             cli_arguments.learning_rate,
             cli_arguments.iteration_count,
         )
 
         trained_parameter_bundle = {
-            "thetas": house_coefficient_table.tolist(),
+            "thetas": house_discipline_weights.tolist(),
             "mu": average_score_by_discipline,
             "sigma": standard_deviation_by_discipline,
-            "features": discipline_score_column_names,
+            "features": discipline_names,
             "house_map": house_code_by_name,
             "inv_house_map": house_name_by_code,
         }
