@@ -12,7 +12,7 @@ def parse_command_line_arguments():
     Returns:
         Namespace: contient les attributs suivants
           - dataset_csv_path (str): chemin vers le CSV des observations (ex: dataset_test.csv)
-          - trained_parameter_file_path (str): fichier json contenant les parametres appris
+          - trained_parameter_json_file_path (str): fichier json contenant les parametres appris
           - output_csv_path (str): chemin du fichier de sortie a genere
     """
     argument_parser = argparse.ArgumentParser(
@@ -23,7 +23,7 @@ def parse_command_line_arguments():
         help="Chemin vers le fichier dataset_test.csv (sans colonne House)"
     )
     argument_parser.add_argument(
-        "trained_parameter_file_path",
+        "trained_parameter_json_file_path",
         help="Fichier JSON contenant les parametres appris (creer par logreg_train.py)"
     )
     argument_parser.add_argument(
@@ -35,7 +35,7 @@ def parse_command_line_arguments():
     return argument_parser.parse_args()
 
 
-def load_house_classifier_parameters(trained_parameter_file_path):
+def load_house_classifier_parameters(trained_parameter_json_file_path):
     """
     Charge le fichier JSON contenant :
         - thetas : poids appris (maisons x disciplines+bias)
@@ -45,31 +45,32 @@ def load_house_classifier_parameters(trained_parameter_file_path):
         - inv_house_map : mapping code maison -> maison
 
     Args:
-        trained_parameter_file_path (str): chemin vers le fichier JSON
+        trained_parameter_json_file_path (str): chemin vers le fichier JSON
 
     Returns:
-        house_discipline_weights (numpy.ndarray): poids appris
-        average_score_by_discipline (list[float]): moyenne discipline par discipline
-        standard_deviation_by_discipline (list[float]): ecart-type discipline par discipline
+        house_discipline_weights_with_bias (numpy.ndarray): poids appris (disciplines+bias)
+        average_discipline_scores (list[float]): moyenne discipline par discipline
+        discipline_standard_deviations (list[float]): ecart-type discipline par discipline
         house_name_by_code (dict[int, str]): nom des differentes maisons
         discipline_names (list[str]): noms des matieres
     """
-    with open(trained_parameter_file_path, "r") as parameter_file:
+    with open(trained_parameter_json_file_path, "r") as parameter_file:
         trained_parameter_bundle = json.load(parameter_file)
 
-    house_discipline_weights = np.array(trained_parameter_bundle["thetas"])
-    average_score_by_discipline = trained_parameter_bundle["mu"]
-    standard_deviation_by_discipline = trained_parameter_bundle["sigma"]
+    house_discipline_weights_with_bias = np.array(trained_parameter_bundle["thetas"])
+    average_discipline_scores = trained_parameter_bundle["mu"]
+    discipline_standard_deviations = trained_parameter_bundle["sigma"]
     house_name_by_code = {
         int(house_code_text): house_name
         for house_code_text, house_name in trained_parameter_bundle["inv_house_map"].items()
     }
     discipline_names = trained_parameter_bundle["features"]
 
+
     return (
-        house_discipline_weights,
-        average_score_by_discipline,
-        standard_deviation_by_discipline,
+        house_discipline_weights_with_bias,
+        average_discipline_scores,
+        discipline_standard_deviations,
         house_name_by_code,
         discipline_names,
     )
@@ -108,51 +109,51 @@ def load_observations(dataset_csv_path, discipline_names):
         discipline_names (list[str]): disciplines attendues depuis weights.json
 
     Returns:
-        student_index_list (list[int]): liste des index du dataset
+        index_list_of_students (list[int]): liste des index du dataset
         student_discipline_scores (pandas.DataFrame): disciplines dans le bon ordre
     """
-    dataset = pd.read_csv(dataset_csv_path)
+    raw_students_dataset = pd.read_csv(dataset_csv_path)
 
-    if "Index" not in dataset.columns:
+    if "Index" not in raw_students_dataset.columns:
         raise ValueError("La colonne 'Index' est manquante dans le fichier CSV.")
 
     missing_discipline_names = [
         discipline_name for discipline_name in discipline_names
-        if discipline_name not in dataset.columns
+        if discipline_name not in raw_students_dataset.columns
     ]
     if missing_discipline_names:
         raise ValueError(
             f"Disciplines manquantes dans le fichier CSV: {missing_discipline_names}"
         )
 
-    student_index_list = dataset["Index"].tolist()
-    student_discipline_scores = dataset[discipline_names].copy()
+    index_list_of_students = raw_students_dataset["Index"].tolist()
+    student_discipline_scores = raw_students_dataset[discipline_names].copy()
 
-    return student_index_list, student_discipline_scores
+    return index_list_of_students, student_discipline_scores
 
 
 def standardize_discipline_scores(
     student_discipline_scores,
-    average_score_by_discipline,
-    standard_deviation_by_discipline,
+    average_discipline_scores,
+    discipline_standard_deviations,
 ):
     """
     Normalise les notes du dataset avec les parametres du train.
 
     Args:
         student_discipline_scores (pandas.DataFrame): notes brutes du dataset
-        average_score_by_discipline (list[float]): moyenne des matieres calculee au train
-        standard_deviation_by_discipline (list[float]): ecart-type calcule au train
+        average_discipline_scores (list[float]): moyenne des matieres calculee au train
+        discipline_standard_deviations (list[float]): ecart-type calcule au train
 
     Returns:
         numpy.ndarray: tableau normalise
     """
-    average_score_by_discipline = np.array(average_score_by_discipline, dtype=float)
-    standard_deviation_by_discipline = np.array(standard_deviation_by_discipline, dtype=float)
-    safe_standard_deviation_by_discipline = np.where(
-        standard_deviation_by_discipline == 0,
+    average_discipline_scores = np.array(average_discipline_scores, dtype=float)
+    discipline_standard_deviations = np.array(discipline_standard_deviations, dtype=float)
+    safe_discipline_standard_deviations = np.where(
+        discipline_standard_deviations == 0,
         1.0,
-        standard_deviation_by_discipline,
+        discipline_standard_deviations,
     )
 
     completed_student_discipline_scores = student_discipline_scores.astype(float).copy()
@@ -161,7 +162,7 @@ def standardize_discipline_scores(
     ):
         completed_student_discipline_scores[discipline_name] = (
             completed_student_discipline_scores[discipline_name].fillna(
-                average_score_by_discipline[discipline_index]
+                average_discipline_scores[discipline_index]
             )
         )
 
@@ -169,14 +170,14 @@ def standardize_discipline_scores(
         dtype=float
     )
     standardized_discipline_scores = (
-        discipline_scores_by_student - average_score_by_discipline
-    ) / safe_standard_deviation_by_discipline
+        discipline_scores_by_student - average_discipline_scores
+    ) / safe_discipline_standard_deviations
     return standardized_discipline_scores
 
 
 def predict_house_names(
     student_discipline_scores_with_bias,
-    house_discipline_weights,
+    house_discipline_weights_with_bias,
     house_name_by_code,
 ):
     """
@@ -184,14 +185,14 @@ def predict_house_names(
 
     Args:
         student_discipline_scores_with_bias (numpy.ndarray): notes normalisees + bias
-        house_discipline_weights (numpy.ndarray): poids appris
+        house_discipline_weights_with_bias (numpy.ndarray): poids appris (disciplines+bias)
         house_name_by_code (dict[int, str]): nom des differentes maisons
 
     Returns:
         list[str]: maison predite pour chaque eleve
     """
     house_logit_scores = student_discipline_scores_with_bias.dot(
-        house_discipline_weights.T
+        house_discipline_weights_with_bias.T
     )
     house_logit_scores = np.clip(house_logit_scores, -500, 500)
     house_probability_scores = 1 / (1 + np.exp(-house_logit_scores))
@@ -206,22 +207,22 @@ def main():
     try:
         cli_arguments = parse_command_line_arguments()
         (
-            house_discipline_weights,
-            average_score_by_discipline,
-            standard_deviation_by_discipline,
+            house_discipline_weights_with_bias,
+            average_discipline_scores,
+            discipline_standard_deviations,
             house_name_by_code,
             discipline_names,
-        ) = load_house_classifier_parameters(cli_arguments.trained_parameter_file_path)
+        ) = load_house_classifier_parameters(cli_arguments.trained_parameter_json_file_path)
 
-        student_index_list, student_discipline_scores = load_observations(
+        index_list_of_students, student_discipline_scores = load_observations(
             cli_arguments.dataset_csv_path,
             discipline_names
         )
 
         standardized_discipline_scores = standardize_discipline_scores(
             student_discipline_scores,
-            average_score_by_discipline,
-            standard_deviation_by_discipline
+            average_discipline_scores,
+            discipline_standard_deviations
         )
 
         student_count = standardized_discipline_scores.shape[0]
@@ -231,12 +232,12 @@ def main():
 
         predicted_house_names = predict_house_names(
             student_discipline_scores_with_bias,
-            house_discipline_weights,
+            house_discipline_weights_with_bias,
             house_name_by_code
         )
 
         prediction_output = pd.DataFrame(
-            {"Index": student_index_list, "Hogwarts House": predicted_house_names}
+            {"Index": index_list_of_students, "Hogwarts House": predicted_house_names}
         )
         prediction_output.to_csv(cli_arguments.output_csv_path, index=False)
         print(
