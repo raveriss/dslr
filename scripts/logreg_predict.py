@@ -38,101 +38,101 @@ def parse_command_line_arguments():
 def load_house_classifier_parameters(trained_parameter_file_path):
     """
     Charge le fichier JSON contenant :
-        - thetas : tableau des coefficients (K x n+1)
+        - thetas : poids appris (maisons x disciplines+bias)
         - mu : moyenne des matieres utilisees pour normaliser
         - sigma : ecart-types utilises pour normaliser
-        - features : nom de toutes les matieres
+        - features : noms des disciplines (cle JSON conservee pour compatibilite)
         - inv_house_map : mapping code maison -> maison
 
     Args:
         trained_parameter_file_path (str): chemin vers le fichier JSON
 
     Returns:
-        house_coefficient_table (numpy.ndarray): coefficients appris
-        average_score_by_discipline (list[float]): moyenne colonne par colonne
-        standard_deviation_by_discipline (list[float]): ecart-type colonne par colonne
+        house_discipline_weights (numpy.ndarray): poids appris
+        average_score_by_discipline (list[float]): moyenne discipline par discipline
+        standard_deviation_by_discipline (list[float]): ecart-type discipline par discipline
         house_name_by_code (dict[int, str]): nom des differentes maisons
-        discipline_score_column_names (list[str]): noms des matieres
+        discipline_names (list[str]): noms des matieres
     """
     with open(trained_parameter_file_path, "r") as parameter_file:
         trained_parameter_bundle = json.load(parameter_file)
 
-    house_coefficient_table = np.array(trained_parameter_bundle["thetas"])
+    house_discipline_weights = np.array(trained_parameter_bundle["thetas"])
     average_score_by_discipline = trained_parameter_bundle["mu"]
     standard_deviation_by_discipline = trained_parameter_bundle["sigma"]
     house_name_by_code = {
         int(house_code_text): house_name
         for house_code_text, house_name in trained_parameter_bundle["inv_house_map"].items()
     }
-    discipline_score_column_names = trained_parameter_bundle["features"]
+    discipline_names = trained_parameter_bundle["features"]
 
     return (
-        house_coefficient_table,
+        house_discipline_weights,
         average_score_by_discipline,
         standard_deviation_by_discipline,
         house_name_by_code,
-        discipline_score_column_names,
+        discipline_names,
     )
 
 
-def get_numeric_discipline_score_columns(dataset_table):
+def get_discipline_names(dataset):
     """
-    Identifie et retourne les colonnes numeriques correspondant aux matieres.
+    Identifie et retourne les noms des disciplines numeriques.
 
     Args:
-        dataset_table (pandas.DataFrame): donnees completes du fichier.
+        dataset (pandas.DataFrame): donnees completes du fichier.
 
     Returns:
-        list[str]: noms de colonnes numeriques, excluant 'Index' et 'Hogwarts House'.
+        list[str]: noms de disciplines, excluant 'Index' et 'Hogwarts House'.
     """
-    numeric_column_names = []
-    for column_name in dataset_table.columns:
-        column_kind = dataset_table[column_name].dtype.kind
-        if column_kind in ("i", "f"):
-            numeric_column_names.append(column_name)
+    discipline_names = []
+    for discipline_name in dataset.columns:
+        discipline_kind = dataset[discipline_name].dtype.kind
+        if discipline_kind in ("i", "f"):
+            discipline_names.append(discipline_name)
 
-    if "Index" in numeric_column_names:
-        numeric_column_names.remove("Index")
-    if "Hogwarts House" in numeric_column_names:
-        numeric_column_names.remove("Hogwarts House")
+    if "Index" in discipline_names:
+        discipline_names.remove("Index")
+    if "Hogwarts House" in discipline_names:
+        discipline_names.remove("Hogwarts House")
 
-    return numeric_column_names
+    return discipline_names
 
 
-def load_observations(dataset_csv_path, discipline_score_column_names):
+def load_observations(dataset_csv_path, discipline_names):
     """
     Lit le fichier CSV des observations.
 
     Args:
         dataset_csv_path (str): chemin du fichier CSV
-        discipline_score_column_names (list[str]): colonnes attendues depuis weights.json
+        discipline_names (list[str]): disciplines attendues depuis weights.json
 
     Returns:
         student_index_list (list[int]): liste des index du dataset
-        discipline_score_table (pandas.DataFrame): colonnes de matieres dans le bon ordre
+        student_discipline_scores (pandas.DataFrame): disciplines dans le bon ordre
     """
-    dataset_table = pd.read_csv(dataset_csv_path)
+    dataset = pd.read_csv(dataset_csv_path)
 
-    if "Index" not in dataset_table.columns:
+    if "Index" not in dataset.columns:
         raise ValueError("La colonne 'Index' est manquante dans le fichier CSV.")
 
-    missing_discipline_score_columns = [
-        discipline_column_name for discipline_column_name in discipline_score_column_names
-        if discipline_column_name not in dataset_table.columns
+    missing_discipline_names = [
+        discipline_name for discipline_name in discipline_names
+        if discipline_name not in dataset.columns
     ]
-    if missing_discipline_score_columns:
+    if missing_discipline_names:
         raise ValueError(
-            f"Colonnes manquantes dans le fichier CSV: {missing_discipline_score_columns}"
+            f"Disciplines manquantes dans le fichier CSV: {missing_discipline_names}"
         )
 
-    student_index_list = dataset_table["Index"].tolist()
-    discipline_score_table = dataset_table[discipline_score_column_names].copy()
+    student_index_list = dataset["Index"].tolist()
+    student_discipline_scores = dataset[discipline_names].copy()
 
-    return student_index_list, discipline_score_table
+    return student_index_list, student_discipline_scores
 
 
 def standardize_discipline_scores(
-    discipline_score_table,
+    student_discipline_scores,
     average_score_by_discipline,
     standard_deviation_by_discipline,
 ):
@@ -140,7 +140,7 @@ def standardize_discipline_scores(
     Normalise les notes du dataset avec les parametres du train.
 
     Args:
-        discipline_score_table (pandas.DataFrame): notes brutes du dataset
+        student_discipline_scores (pandas.DataFrame): notes brutes du dataset
         average_score_by_discipline (list[float]): moyenne des matieres calculee au train
         standard_deviation_by_discipline (list[float]): ecart-type calcule au train
 
@@ -155,17 +155,17 @@ def standardize_discipline_scores(
         standard_deviation_by_discipline,
     )
 
-    completed_discipline_score_table = discipline_score_table.astype(float).copy()
-    for discipline_column_index, column_name in enumerate(
-        completed_discipline_score_table.columns
+    completed_student_discipline_scores = student_discipline_scores.astype(float).copy()
+    for discipline_index, discipline_name in enumerate(
+        completed_student_discipline_scores.columns
     ):
-        completed_discipline_score_table[column_name] = (
-            completed_discipline_score_table[column_name].fillna(
-                average_score_by_discipline[discipline_column_index]
+        completed_student_discipline_scores[discipline_name] = (
+            completed_student_discipline_scores[discipline_name].fillna(
+                average_score_by_discipline[discipline_index]
             )
         )
 
-    discipline_scores_by_student = completed_discipline_score_table.to_numpy(
+    discipline_scores_by_student = completed_student_discipline_scores.to_numpy(
         dtype=float
     )
     standardized_discipline_scores = (
@@ -175,27 +175,27 @@ def standardize_discipline_scores(
 
 
 def predict_house_names(
-    standardized_discipline_scores_with_intercept,
-    house_coefficient_table,
+    student_discipline_scores_with_bias,
+    house_discipline_weights,
     house_name_by_code,
 ):
     """
     Predit la maison de chaque eleve a partir des notes du dataset et des coefficients appris.
 
     Args:
-        standardized_discipline_scores_with_intercept (numpy.ndarray): notes normalisees + interception
-        house_coefficient_table (numpy.ndarray): tableau des coefficients appris
+        student_discipline_scores_with_bias (numpy.ndarray): notes normalisees + bias
+        house_discipline_weights (numpy.ndarray): poids appris
         house_name_by_code (dict[int, str]): nom des differentes maisons
 
     Returns:
         list[str]: maison predite pour chaque eleve
     """
-    house_logit_table = standardized_discipline_scores_with_intercept.dot(
-        house_coefficient_table.T
+    house_logit_scores = student_discipline_scores_with_bias.dot(
+        house_discipline_weights.T
     )
-    house_logit_table = np.clip(house_logit_table, -500, 500)
-    house_probability_table = 1 / (1 + np.exp(-house_logit_table))
-    predicted_house_codes = np.argmax(house_probability_table, axis=1)
+    house_logit_scores = np.clip(house_logit_scores, -500, 500)
+    house_probability_scores = 1 / (1 + np.exp(-house_logit_scores))
+    predicted_house_codes = np.argmax(house_probability_scores, axis=1)
     predicted_house_names = [
         house_name_by_code[int(house_code)] for house_code in predicted_house_codes
     ]
@@ -206,39 +206,39 @@ def main():
     try:
         cli_arguments = parse_command_line_arguments()
         (
-            house_coefficient_table,
+            house_discipline_weights,
             average_score_by_discipline,
             standard_deviation_by_discipline,
             house_name_by_code,
-            discipline_score_column_names,
+            discipline_names,
         ) = load_house_classifier_parameters(cli_arguments.trained_parameter_file_path)
 
-        student_index_list, discipline_score_table = load_observations(
+        student_index_list, student_discipline_scores = load_observations(
             cli_arguments.dataset_csv_path,
-            discipline_score_column_names
+            discipline_names
         )
 
         standardized_discipline_scores = standardize_discipline_scores(
-            discipline_score_table,
+            student_discipline_scores,
             average_score_by_discipline,
             standard_deviation_by_discipline
         )
 
         student_count = standardized_discipline_scores.shape[0]
-        standardized_discipline_scores_with_intercept = np.hstack(
+        student_discipline_scores_with_bias = np.hstack(
             [np.ones((student_count, 1)), standardized_discipline_scores]
         )
 
         predicted_house_names = predict_house_names(
-            standardized_discipline_scores_with_intercept,
-            house_coefficient_table,
+            student_discipline_scores_with_bias,
+            house_discipline_weights,
             house_name_by_code
         )
 
-        prediction_output_table = pd.DataFrame(
+        prediction_output = pd.DataFrame(
             {"Index": student_index_list, "Hogwarts House": predicted_house_names}
         )
-        prediction_output_table.to_csv(cli_arguments.output_csv_path, index=False)
+        prediction_output.to_csv(cli_arguments.output_csv_path, index=False)
         print(
             f"→ Fichier de prediction enregistre dans {cli_arguments.output_csv_path}"
         )
