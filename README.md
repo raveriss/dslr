@@ -128,10 +128,12 @@ Format par défaut des visuels :
 
 | Commande | Graphique généré | Aperçu |
 |---|---|---|
-| `make animate` | `logreg_train_weights` | ![Train example](docs/assets/logreg_train_weights.gif) |
 | `make histogram` | `histogram` | ![Histogram example](docs/assets/histogram.png) |
 | `make scatter` | `scatter plot` | ![Scatter plot example](docs/assets/scatter.png) |
 | `make pair` | `pair plot` | ![Pair plot example](docs/assets/pair_plot.png) |
+| `make animate` | `logreg_train_weights` | ![Train example](docs/assets/logreg_train_weights.gif) |
+| `make kiviat` | `kiviat_house_discipline_weights` |![Kiviat example](docs/assets/kiviat_house_discipline_weights.png) |
+
 
 ### 7.2 Entraînement et prédiction
 
