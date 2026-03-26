@@ -8,6 +8,9 @@ VENV_ERROR_LOG = /tmp/dslr_venv_error.log
 TRAIN_DATA = datasets/dataset_train.csv
 TEST_DATA = datasets/dataset_test.csv
 WEIGHTS = weights.json
+TRAIN_ITERATIONS = 1000
+TRAIN_ALPHA = 0.01
+TRAIN_OUTPUT = $(WEIGHTS)
 PREDICTIONS = houses.csv
 ANIMATION_DATA = $(TRAIN_DATA)
 ANIMATION_OUTPUT = visuals/logreg_train_weights.gif
@@ -72,7 +75,10 @@ pair:
 	$(PYTHON) scripts/pair_plot.py $(TRAIN_DATA)
 
 train:
-	$(PYTHON) scripts/logreg_train.py $(TRAIN_DATA)
+	$(PYTHON) scripts/logreg_train.py $(TRAIN_DATA) \
+		--alpha $(TRAIN_ALPHA) \
+		--iterations $(TRAIN_ITERATIONS) \
+		--out $(TRAIN_OUTPUT)
 
 predict:
 	$(PYTHON) scripts/logreg_predict.py $(TEST_DATA) $(WEIGHTS)
@@ -85,7 +91,6 @@ animate: install
 		--figure-scale $(ANIMATION_FIGURE_SCALE) \
 		--gif-final-frame-hold-ms $(ANIMATION_GIF_FINAL_FRAME_HOLD_MS) \
 		--save $(ANIMATION_OUTPUT) \
-		--no-show
 
 kiviat: install
 	$(PYTHON) scripts/kiviat_house_discipline_weights.py $(KIVIAT_WEIGHTS) \

@@ -220,7 +220,7 @@ def plot_kiviat(
     closed_axis_angles_for_baseline, _ = close_polar_curve(axis_angles, np.zeros(axis_count))
 
     plt.style.use("seaborn-v0_8-whitegrid")
-    figure = plt.figure(figsize=(width, height), facecolor="#BCC3CE")
+    figure = plt.figure(figsize=(width, height), facecolor="#E9ECF0")
     axis = figure.add_subplot(111, projection="polar", facecolor="#D8DEE7")
 
     figure.subplots_adjust(top=0.78, bottom=0.18, left=0.10, right=0.90)

@@ -68,6 +68,35 @@ def get_discipline_names(dataset):
     return discipline_names
 
 
+def log_discipline_column_diagnostics(raw_students_dataset, discipline_names):
+    """
+    Affiche des logs utiles pour comprendre pourquoi certaines disciplines sont ignorees.
+    """
+
+    candidate_discipline_names = [
+        "Arithmancy",
+        "Astronomy",
+        "Muggle Studies",
+        "Potions",
+        "Flying",
+    ]
+
+    for discipline_name in candidate_discipline_names:
+        if discipline_name not in raw_students_dataset.columns:
+            print(f"- {discipline_name}: colonne absente du CSV")
+            continue
+
+        discipline_scores = raw_students_dataset[discipline_name]
+        data_type_name = str(discipline_scores.dtype)
+        nan_count = int(discipline_scores.isna().sum())
+        sample_values = discipline_scores.head(5).tolist()
+
+    ignored_discipline_names = [
+        discipline_name for discipline_name in candidate_discipline_names
+        if discipline_name in raw_students_dataset.columns and discipline_name not in discipline_names
+    ]
+
+
 def load_and_prepare_dataset(input_csv_path):
     """
     Lit le CSV d'entrainement et prepare X, y pour l'entrainement.
@@ -162,26 +191,43 @@ def fit_one_vs_rest_house_classifier(
     house_count = len(unique_house_codes)
     house_discipline_weights = np.zeros((house_count, discipline_plus_bias_count))
 
-
+    # "Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin"]
     for current_house_code in unique_house_codes:
+        if current_house_code == 0:
+            print(f"\n                             HOUSE   \n                           Gryffindor")
+        elif current_house_code == 1:
+            print(f"\n                             HOUSE   \n                           Hufflepuff")
+        elif current_house_code == 2:
+            print(f"\n                             HOUSE   \n                           Ravenclaw")
+        elif current_house_code == 3:
+            print(f"\n                             HOUSE   \n                           Slytherin")
+
         current_house_weights = np.zeros(discipline_plus_bias_count)
         is_student_assigned_to_current_house = (
             assigned_house_codes_by_student == current_house_code
         ).astype(float)
 
         for _ in range(iteration_count):
+            print(f"\niteration_count : {_}")
             predicted_probability_of_current_house = compute_sigmoid(
                 student_discipline_scores_with_bias.dot(current_house_weights)
             )
+            print(f"\npredicted_probability_of_current_house : \n{predicted_probability_of_current_house}")
+            print(f"\nFORMULE CURRENT_HOUSE_WEIGHT_GRADIENT :")
+            print(f"(1 / student_count ) * predicted_probability_of_current_house - is_student_assigned_to_current_house")
             current_house_weight_gradient = (
                 1 / student_count
             ) * student_discipline_scores_with_bias.T.dot(
                 predicted_probability_of_current_house - is_student_assigned_to_current_house
             )
+            print(f"current_house_weight_gradient : \n{current_house_weight_gradient}")
+            print(f"\nCURRENT_HOUSE_WEIGHTS FORUMULE ET RESULTAT : \ncurrent_house_weights - learning_rate * current_house_weight_gradient")
+            print(f"{current_house_weights} - {learning_rate} * {current_house_weight_gradient}")
+
             current_house_weights -= learning_rate * current_house_weight_gradient
-
+            print(f"{current_house_weights}")
         house_discipline_weights[int(current_house_code), :] = current_house_weights
-
+        print(f"\nHOUSE_DISCIPLINE_WEIGHTS : \n{house_discipline_weights}")
     return house_discipline_weights
 
 
@@ -195,6 +241,7 @@ def main():
             house_name_by_code,
             discipline_names,
         ) = load_and_prepare_dataset(cli_arguments.input_csv_path)
+        print(f"\nstudent_discipline_scores : \n{student_discipline_scores}")
 
         (
             standardized_discipline_scores,
@@ -206,7 +253,7 @@ def main():
         student_discipline_scores_with_bias = np.hstack(
             [np.ones((student_count, 1)), standardized_discipline_scores]
         )
-
+        print(f"\nstandardized_discipline_scores : \n{standardized_discipline_scores}")
         house_discipline_weights = fit_one_vs_rest_house_classifier(
             student_discipline_scores_with_bias,
             assigned_house_codes_by_student,
