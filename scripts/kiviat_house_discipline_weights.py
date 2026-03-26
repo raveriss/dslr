@@ -306,7 +306,7 @@ def plot_kiviat(
         frameon=True,
         fontsize=11,
     )
-    legend.get_frame().set_facecolor("#EEF2F7")
+    legend.get_frame().set_facecolor("#FFFFFF")
     legend.get_frame().set_edgecolor("#A8B4C3")
 
     absolute_output_image_path = os.path.abspath(output_image_path)
