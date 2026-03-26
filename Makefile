@@ -16,8 +16,11 @@ ANIMATION_FRAME_STEP = 1
 ANIMATION_MAX_PREVIEW_FRAMES = 250
 ANIMATION_FIGURE_SCALE = 1.0
 ANIMATION_GIF_FINAL_FRAME_HOLD_MS = 2000
+KIVIAT_WEIGHTS = $(WEIGHTS)
+KIVIAT_OUTPUT = visuals/kiviat_house_discipline_weights.png
+KIVIAT_SMOOTH_POINTS_PER_SEGMENT = 10
 
-.PHONY: all install describe histogram scatter pair train predict animate re clean fclean help
+.PHONY: all install describe histogram scatter pair train predict animate kiviat re clean fclean help
 
 all: install
 
@@ -82,6 +85,12 @@ animate: install
 		--figure-scale $(ANIMATION_FIGURE_SCALE) \
 		--gif-final-frame-hold-ms $(ANIMATION_GIF_FINAL_FRAME_HOLD_MS) \
 		--save $(ANIMATION_OUTPUT) \
+		--no-show
+
+kiviat: install
+	$(PYTHON) scripts/kiviat_house_discipline_weights.py $(KIVIAT_WEIGHTS) \
+		--out $(KIVIAT_OUTPUT) \
+		--smooth-points-per-segment $(KIVIAT_SMOOTH_POINTS_PER_SEGMENT)
 
 re: fclean all
 
@@ -106,5 +115,6 @@ help:
 	@echo "  make train       - Train logistic regression and save weights"
 	@echo "  make predict     - Predict houses from dataset_test.csv using weights.json"
 	@echo "  make animate     - Generate training animation GIF in visuals/"
+	@echo "  make kiviat      - Generate Kiviat chart of discipline weights by house"
 	@echo "  make clean       - Remove generated files"
 	@echo "  make re          - Clean and reinstall dependencies"
