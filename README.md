@@ -128,6 +128,7 @@ Format par défaut des visuels :
 
 | Commande | Graphique généré | Aperçu |
 |---|---|---|
+| `make train` | `train` | ![Train example](docs/assets/evolution_poids_biais_pendant_entrainement.png) |
 | `make histogram` | `histogram` | ![Histogram example](docs/assets/histogram.png) |
 | `make scatter` | `scatter plot` | ![Scatter plot example](docs/assets/scatter.png) |
 | `make pair` | `pair plot` | ![Pair plot example](docs/assets/pair_plot.png) |
