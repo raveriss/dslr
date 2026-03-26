@@ -4,6 +4,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
+from PIL import Image
 
 import logreg_train as train_module
 
@@ -48,17 +49,31 @@ def parse_command_line_arguments():
         help="Intervalle entre deux frames en millisecondes (defaut: 120)."
     )
     argument_parser.add_argument(
-        "--repeat",
-        dest="repeat_animation",
-        action="store_true",
-        help="Relance l'animation en boucle (desactive par defaut)."
-    )
-    argument_parser.add_argument(
         "--max-preview-frames",
         dest="max_preview_frame_count",
         type=int,
         default=450,
         help="Nombre maximum de frames en affichage ecran (defaut: 450)."
+    )
+    argument_parser.add_argument(
+        "--figure-scale",
+        dest="figure_scale",
+        type=float,
+        default=1.0,
+        help=(
+            "Facteur d'echelle pour la figure 16:9 "
+            "(1.0 -> 16x9 pouces, 1.5 -> 24x13.5)."
+        ),
+    )
+    argument_parser.add_argument(
+        "--gif-final-frame-hold-ms",
+        dest="gif_final_frame_hold_ms",
+        type=int,
+        default=2000,
+        help=(
+            "Duree d'affichage de la derniere frame (GIF) en ms "
+            "pour mieux marquer la fin (defaut: 2000)."
+        ),
     )
     argument_parser.add_argument(
         "--save",
@@ -155,13 +170,40 @@ def downsample_history_for_preview(history, max_preview_frame_count):
     return reduced_history
 
 
+def enforce_finite_gif_playback(gif_file_path, final_frame_hold_ms):
+    with Image.open(gif_file_path) as gif_image:
+        gif_frame_count = getattr(gif_image, "n_frames", 1)
+        frame_list = []
+        frame_duration_list = []
+
+        for frame_index in range(gif_frame_count):
+            gif_image.seek(frame_index)
+            frame_list.append(gif_image.copy())
+            frame_duration_list.append(int(gif_image.info.get("duration", 100)))
+
+    if not frame_list:
+        return
+
+    safe_final_frame_hold_ms = max(100, int(final_frame_hold_ms))
+    frame_duration_list[-1] = max(frame_duration_list[-1], safe_final_frame_hold_ms)
+
+    frame_list[0].save(
+        gif_file_path,
+        save_all=True,
+        append_images=frame_list[1:],
+        duration=frame_duration_list,
+        loop=1,
+        optimize=False,
+    )
+
+
 def build_animation(
     history,
     house_name_by_code,
     discipline_names,
     iteration_count,
     frame_interval_ms,
-    repeat_animation,
+    figure_scale,
 ):
     global_steps = np.array([snapshot[3] for snapshot in history], dtype=int)
     weight_history = np.array([snapshot[0] for snapshot in history], dtype=float)
@@ -187,7 +229,10 @@ def build_animation(
     discipline_row_count = int(np.ceil(discipline_count / column_count))
     total_row_count = 1 + discipline_row_count
 
-    figure = plt.figure(figsize=(17, 3.5 + 2.1 * discipline_row_count))
+    safe_figure_scale = max(0.25, float(figure_scale))
+    figure_width_inch = 16.0 * safe_figure_scale
+    figure_height_inch = 9.0 * safe_figure_scale
+    figure = plt.figure(figsize=(figure_width_inch, figure_height_inch))
     grid = figure.add_gridspec(
         total_row_count,
         column_count,
@@ -344,7 +389,7 @@ def build_animation(
         frames=len(history),
         interval=frame_interval_ms,
         blit=True,
-        repeat=repeat_animation,
+        repeat=False,
         cache_frame_data=False,
     )
     return figure, animation
@@ -403,7 +448,7 @@ def main():
             discipline_names,
             cli_arguments.iteration_count,
             cli_arguments.frame_interval_ms,
-            cli_arguments.repeat_animation,
+            cli_arguments.figure_scale,
         )
 
         if cli_arguments.output_animation_path:
@@ -415,6 +460,12 @@ def main():
                 if output_directory_path:
                     os.makedirs(output_directory_path, exist_ok=True)
                 animation.save(absolute_output_animation_path)
+
+                if absolute_output_animation_path.lower().endswith(".gif"):
+                    enforce_finite_gif_playback(
+                        absolute_output_animation_path,
+                        cli_arguments.gif_final_frame_hold_ms,
+                    )
 
                 if os.path.isfile(absolute_output_animation_path):
                     output_file_size = os.path.getsize(absolute_output_animation_path)

@@ -9,8 +9,15 @@ TRAIN_DATA = datasets/dataset_train.csv
 TEST_DATA = datasets/dataset_test.csv
 WEIGHTS = weights.json
 PREDICTIONS = houses.csv
+ANIMATION_DATA = $(TRAIN_DATA)
+ANIMATION_OUTPUT = visuals/logreg_train_weights.gif
+ANIMATION_ITERATIONS = 40
+ANIMATION_FRAME_STEP = 1
+ANIMATION_MAX_PREVIEW_FRAMES = 250
+ANIMATION_FIGURE_SCALE = 1.0
+ANIMATION_GIF_FINAL_FRAME_HOLD_MS = 2000
 
-.PHONY: all install describe histogram scatter pair train predict re clean fclean help
+.PHONY: all install describe histogram scatter pair train predict animate re clean fclean help
 
 all: install
 
@@ -67,6 +74,15 @@ train:
 predict:
 	$(PYTHON) scripts/logreg_predict.py $(TEST_DATA) $(WEIGHTS)
 
+animate: install
+	$(PYTHON) scripts/animate_logreg_train.py $(ANIMATION_DATA) \
+		--iterations $(ANIMATION_ITERATIONS) \
+		--frame-step $(ANIMATION_FRAME_STEP) \
+		--max-preview-frames $(ANIMATION_MAX_PREVIEW_FRAMES) \
+		--figure-scale $(ANIMATION_FIGURE_SCALE) \
+		--gif-final-frame-hold-ms $(ANIMATION_GIF_FINAL_FRAME_HOLD_MS) \
+		--save $(ANIMATION_OUTPUT) \
+
 re: fclean all
 
 clean:
@@ -89,5 +105,6 @@ help:
 	@echo "  make pair        - Generate pair plot from dataset_train.csv"
 	@echo "  make train       - Train logistic regression and save weights"
 	@echo "  make predict     - Predict houses from dataset_test.csv using weights.json"
+	@echo "  make animate     - Generate training animation GIF in visuals/"
 	@echo "  make clean       - Remove generated files"
 	@echo "  make re          - Clean and reinstall dependencies"
