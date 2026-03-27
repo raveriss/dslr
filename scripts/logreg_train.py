@@ -231,22 +231,16 @@ def fit_one_vs_rest_house_classifier(
             predicted_probability_of_current_house = compute_sigmoid(
                 student_discipline_scores_with_bias.dot(current_house_weights)
             )
-            print("\nPREDICTED_PROBABILITY_OF_CURRENT_HOUSE")
-            print("CALCULE :")
-            print(f"student_discipline_scores_with_bias : \n{student_discipline_scores_with_bias}")
             print(
-                f"\nstudent_discipline_scores_with_bias.dot(current_house_weights)"
-                f"\nstudent_discipline_scores_with_bias.dot({current_house_weights})\n"
-                "----------------------------------------"
-                f"\n= {student_discipline_scores_with_bias.dot(current_house_weights)}"
+                "\nPREDICTED_PROBABILITY_OF_CURRENT_HOUSE"
+                "\nCALCULE :"
+                "\ncompute_sigmoid(student_discipline_scores_with_bias.dot(current_house_weights))"
+                f"\ncompute_sigmoid(student_discipline_scores_with_bias.dot({current_house_weights}))"
+                f"\ncompute_sigmoid({student_discipline_scores_with_bias.dot(current_house_weights)})"
+                "\n--------------------------------------------------------------"    
+                f"\n= {compute_sigmoid(student_discipline_scores_with_bias.dot(current_house_weights))}"
             )
-            print(f"\ncurrent_house_weights : {current_house_weights}")
-            print(
-                "----------------------------------------"
-                f"\n= {predicted_probability_of_current_house}"
-            )
-
-
+            print(f"\n/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
             prediction_error_by_student = (
                 predicted_probability_of_current_house
                 - is_student_assigned_to_current_house
@@ -255,11 +249,10 @@ def fit_one_vs_rest_house_classifier(
             print(f"CALCULE :\npredicted_probability_of_current_house - is_student_assigned_to_current_house")
             print(f"{predicted_probability_of_current_house} - {is_student_assigned_to_current_house}")
             print(
-                "----------------------------------------"
+                "--------------------------------------------------------------"
                 f"\n= {prediction_error_by_student}"
             )
-
-
+            print(f"\n/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
             bias_and_standardized_discipline_scores_error_sum = (
                 student_discipline_scores_with_bias.T.dot(
                     prediction_error_by_student
@@ -269,30 +262,35 @@ def fit_one_vs_rest_house_classifier(
                 "\nBIAS_AND_STANDARDIZED_DISCIPLINE_SCORES_ERROR_SUM"
                 "\nCALCULE :"
                 "\nstudent_discipline_scores_with_bias.T.dot(prediction_error_by_student)"
-                f"\nstudent_discipline_scores_with_bias.T.dot({prediction_error_by_student})"         
-                "\n----------------------------------------"
+                f"\n{student_discipline_scores_with_bias}"
+                f"\n                                   .T.dot({prediction_error_by_student})"      
+                "\n--------------------------------------------------------------"
                 f"\n= {bias_and_standardized_discipline_scores_error_sum}"
             )
-
+            print(f"\n/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
             current_house_weight_gradient = (
                 1 / student_count
             ) * bias_and_standardized_discipline_scores_error_sum
             print(
                 "\nCURRENT_HOUSE_WEIGHT_GRADIENT"
                 "\nCALCULE :\n(1 / student_count) * bias_and_standardized_discipline_scores_error_sum"
-                f"\n(1 - {student_count}) * {bias_and_standardized_discipline_scores_error_sum}"
-                "\n----------------------------------------"
-                f"\n= {current_house_weights}"
+                f"\n(1 / {student_count}) * {bias_and_standardized_discipline_scores_error_sum}"
+                f"\n({1 / student_count}) * {bias_and_standardized_discipline_scores_error_sum}"
+                "\n--------------------------------------------------------------"
+                f"\n= {current_house_weight_gradient}"
             )
-
-            current_house_weights -= learning_rate * current_house_weight_gradient
+            print(f"\n/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
             print(
                 "\nCURRENT_HOUSE_WEIGHTS"
-                "\nCALCULE : current_house_weights - learning_rate * current_house_weight_gradient"
-                f"\n{current_house_weights} - {learning_rate} * {bias_and_standardized_discipline_scores_error_sum}"
-                "\n----------------------------------------"
-                f"\n= {current_house_weights}"
+                "\nCALCULE :\ncurrent_house_weights - learning_rate * current_house_weight_gradient"
+                f"\n{current_house_weights} - {learning_rate} * {current_house_weight_gradient}"
+                f"\n{current_house_weights} - {learning_rate * current_house_weight_gradient}"
+
+                "\n--------------------------------------------------------------"
             )
+            current_house_weights -= learning_rate * current_house_weight_gradient
+            print(f"{current_house_weights}")
+
             
         house_discipline_weights[int(current_house_code), :] = current_house_weights
         print(f"\nHOUSE_DISCIPLINE_WEIGHTS : \n{house_discipline_weights}")
