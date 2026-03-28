@@ -193,8 +193,8 @@ def fit_one_vs_rest_house_classifier(
 
     # "Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin"]
     for current_house_code in unique_house_codes:
+        print("")
         if current_house_code == 0:
-            print("")
             print(f"/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
             print(f"/*                                 HOUSE                                     */")
             print(f"/*                               GRYFFINDOR                                  */")
@@ -220,7 +220,7 @@ def fit_one_vs_rest_house_classifier(
             assigned_house_codes_by_student == current_house_code
         ).astype(float)
 
-        print(f"\nIS_STUDENT_ASSIGNED_TO_CURRENT_HOUSE : \n{is_student_assigned_to_current_house}")
+        print(f"\nIS_STUDENT_ASSIGNED_TO_CURRENT_HOUSE : {is_student_assigned_to_current_house}")
 
         for _ in range(iteration_count):
             print("")
