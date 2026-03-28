@@ -102,8 +102,8 @@ def load_and_prepare_dataset(input_csv_path):
     Lit le CSV d'entrainement et prepare X, y pour l'entrainement.
 
     Returns:
-        student_discipline_scores (pandas.DataFrame): notes numeriques par matiere, sans la colonne Hogwarts House
-        assigned_house_codes_by_student (numpy.ndarray): codes maisons attendus (0-3)
+        students_disciplines_scores (pandas.DataFrame): notes numeriques par matiere, sans la colonne Hogwarts House
+        assigned_house_codes_for_students (numpy.ndarray): codes maisons attendus (0-3)
         house_code_by_name (dict[str, int]): mapping maison -> code maison
         house_name_by_code (dict[int, str]): mapping code maison -> maison
         discipline_names (list[str]): noms des disciplines
@@ -111,53 +111,53 @@ def load_and_prepare_dataset(input_csv_path):
     raw_students_dataset = pd.read_csv(input_csv_path)
     discipline_names = get_discipline_names(raw_students_dataset)
 
-    students_with_complete_discipline_scores = raw_students_dataset.dropna(
+    students_with_complete_disciplines_scores = raw_students_dataset.dropna(
         subset=["Hogwarts House"] + discipline_names
     )
 
-    student_discipline_scores = (
-        students_with_complete_discipline_scores[discipline_names].reset_index(drop=True)
+    students_disciplines_scores = (
+        students_with_complete_disciplines_scores[discipline_names].reset_index(drop=True)
     )
 
     house_names = ["Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin"]
     house_code_by_name = {house_name: code for code, house_name in enumerate(house_names)}
     house_name_by_code = {code: house_name for house_name, code in house_code_by_name.items()}
-    assigned_house_codes_by_student = students_with_complete_discipline_scores["Hogwarts House"].map(
+    assigned_house_codes_for_students = students_with_complete_disciplines_scores["Hogwarts House"].map(
         house_code_by_name
     ).to_numpy(dtype=int)
 
     return (
-        student_discipline_scores,
-        assigned_house_codes_by_student,
+        students_disciplines_scores,
+        assigned_house_codes_for_students,
         house_code_by_name,
         house_name_by_code,
         discipline_names,
     )
 
 
-def standardize_discipline_scores(student_discipline_scores):
+def standardize_disciplines_scores(students_disciplines_scores):
     """
     Centre et reduit les notes par matiere.
     Formule appliquee: (note_eleve_matiere - moyenne_matiere) / ecart_type_matiere.
 
     Returns:
-        standardized_discipline_scores (numpy.ndarray): notes normalisees
-        average_score_by_discipline (list[float]): moyenne de chaque matiere
-        standard_deviation_by_discipline (list[float]): ecart-type de chaque matiere
+        standardized_disciplines_scores (numpy.ndarray): notes normalisees
+        average_scores_by_disciplines (list[float]): moyenne de chaque matiere
+        standard_deviations_by_disciplines (list[float]): ecart-type de chaque matiere
     """
-    discipline_scores_by_student = (
-        student_discipline_scores.to_numpy(dtype=float)
+    disciplines_scores_for_students = (
+        students_disciplines_scores.to_numpy(dtype=float)
     )
-    average_score_by_discipline = discipline_scores_by_student.mean(axis=0)
-    standard_deviation_by_discipline = discipline_scores_by_student.std(axis=0, ddof=0)
-    standardized_discipline_scores = (
-        discipline_scores_by_student - average_score_by_discipline
-    ) / standard_deviation_by_discipline
+    average_scores_by_disciplines = disciplines_scores_for_students.mean(axis=0)
+    standard_deviations_by_disciplines = disciplines_scores_for_students.std(axis=0, ddof=0)
+    standardized_disciplines_scores = (
+        disciplines_scores_for_students - average_scores_by_disciplines
+    ) / standard_deviations_by_disciplines
 
     return (
-        standardized_discipline_scores,
-        average_score_by_discipline.tolist(),
-        standard_deviation_by_discipline.tolist(),
+        standardized_disciplines_scores,
+        average_scores_by_disciplines.tolist(),
+        standard_deviations_by_disciplines.tolist(),
     )
 
 
@@ -167,8 +167,8 @@ def compute_sigmoid(linear_score_array):
 
 
 def fit_one_vs_rest_house_classifier(
-    student_discipline_scores_with_bias,
-    assigned_house_codes_by_student,
+    students_disciplines_scores_with_bias,
+    assigned_house_codes_for_students,
     learning_rate,
     iteration_count,
 ):
@@ -176,20 +176,20 @@ def fit_one_vs_rest_house_classifier(
     Entraine un classifieur logistique one-vs-all.
 
     Args:
-        student_discipline_scores_with_bias (numpy.ndarray): notes normalisees + colonne de bias
-        assigned_house_codes_by_student (numpy.ndarray): codes maisons 0, 1, 2 ou 3
+        students_disciplines_scores_with_bias (numpy.ndarray): notes normalisees + colonne de bias
+        assigned_house_codes_for_students (numpy.ndarray): codes maisons 0, 1, 2 ou 3
         learning_rate (float): taux d'apprentissage
         iteration_count (int): nombre d'iterations
 
     Returns:
-        numpy.ndarray: poids des maisons par discipline, avec le bias en colonne 0
+        numpy.ndarray: poids des maisons par disciplines, avec le bias en colonne 0
     """
-    student_count, discipline_plus_bias_count = student_discipline_scores_with_bias.shape
+    students_count, disciplines_plus_bias_count = students_disciplines_scores_with_bias.shape
 
-    unique_house_codes = np.unique(assigned_house_codes_by_student)
+    unique_house_codes = np.unique(assigned_house_codes_for_students)
     
     house_count = len(unique_house_codes)
-    house_discipline_weights = np.zeros((house_count, discipline_plus_bias_count))
+    house_disciplines_weights = np.zeros((house_count, disciplines_plus_bias_count))
 
     # "Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin"]
     for current_house_code in unique_house_codes:
@@ -215,12 +215,12 @@ def fit_one_vs_rest_house_classifier(
             print(f"/*                               SLYTHERIN                                   */")
             print(f"/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
 
-        current_house_weights = np.zeros(discipline_plus_bias_count)
-        is_student_assigned_to_current_house = (
-            assigned_house_codes_by_student == current_house_code
+        current_house_weights = np.zeros(disciplines_plus_bias_count)
+        are_students_assigned_to_current_house = (
+            assigned_house_codes_for_students == current_house_code
         ).astype(float)
 
-        print(f"\nIS_STUDENT_ASSIGNED_TO_CURRENT_HOUSE : {is_student_assigned_to_current_house}")
+        print(f"\nARE_STUDENTS_ASSIGNED_TO_CURRENT_HOUSE : {are_students_assigned_to_current_house}")
 
         for _ in range(iteration_count):
             print("")
@@ -229,53 +229,53 @@ def fit_one_vs_rest_house_classifier(
             print(f"                        /*   -'-,-'-,-'-,-'-,-'-,-   */")
 
             predicted_probability_of_current_house = compute_sigmoid(
-                student_discipline_scores_with_bias.dot(current_house_weights)
+                students_disciplines_scores_with_bias.dot(current_house_weights)
             )
             print(
                 "\nPREDICTED_PROBABILITY_OF_CURRENT_HOUSE"
                 "\nCALCULE :"
-                "\ncompute_sigmoid(student_discipline_scores_with_bias.dot(current_house_weights))"
-                f"\ncompute_sigmoid(student_discipline_scores_with_bias.dot({current_house_weights}))"
-                f"\ncompute_sigmoid({student_discipline_scores_with_bias.dot(current_house_weights)})"
+                "\ncompute_sigmoid(students_disciplines_scores_with_bias.dot(current_house_weights))"
+                f"\ncompute_sigmoid(students_disciplines_scores_with_bias.dot({current_house_weights}))"
+                f"\ncompute_sigmoid({students_disciplines_scores_with_bias.dot(current_house_weights)})"
                 "\n--------------------------------------------------------------"    
-                f"\n= {compute_sigmoid(student_discipline_scores_with_bias.dot(current_house_weights))}"
+                f"\n= {compute_sigmoid(students_disciplines_scores_with_bias.dot(current_house_weights))}"
             )
             print(f"\n/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
-            prediction_error_by_student = (
+            prediction_error_by_students = (
                 predicted_probability_of_current_house
-                - is_student_assigned_to_current_house
+                - are_students_assigned_to_current_house
             )
-            print("\nPREDICTION_ERROR_BY_STUDENT")
-            print(f"CALCULE :\npredicted_probability_of_current_house - is_student_assigned_to_current_house")
-            print(f"{predicted_probability_of_current_house} - {is_student_assigned_to_current_house}")
+            print("\nPREDICTION_ERROR_BY_STUDENTS")
+            print(f"CALCULE :\npredicted_probability_of_current_house - are_students_assigned_to_current_house")
+            print(f"{predicted_probability_of_current_house} - {are_students_assigned_to_current_house}")
             print(
                 "--------------------------------------------------------------"
-                f"\n= {prediction_error_by_student}"
+                f"\n= {prediction_error_by_students}"
             )
             print(f"\n/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
-            bias_and_standardized_discipline_scores_error_sum = (
-                student_discipline_scores_with_bias.T.dot(
-                    prediction_error_by_student
+            bias_and_standardized_disciplines_scores_error_sum = (
+                students_disciplines_scores_with_bias.T.dot(
+                    prediction_error_by_students
                 )
             )
             print(
-                "\nBIAS_AND_STANDARDIZED_DISCIPLINE_SCORES_ERROR_SUM"
+                "\nBIAS_AND_STANDARDIZED_DISCIPLINES_SCORES_ERROR_SUM"
                 "\nCALCULE :"
-                "\nstudent_discipline_scores_with_bias.T.dot(prediction_error_by_student)"
-                f"\n{student_discipline_scores_with_bias}"
-                f"\n                                   .T.dot({prediction_error_by_student})"      
+                "\nstudents_disciplines_scores_with_bias.T.dot(prediction_error_by_students)"
+                f"\n{students_disciplines_scores_with_bias}"
+                f"\n                                   .T.dot({prediction_error_by_students})"      
                 "\n--------------------------------------------------------------"
-                f"\n= {bias_and_standardized_discipline_scores_error_sum}"
+                f"\n= {bias_and_standardized_disciplines_scores_error_sum}"
             )
             print(f"\n/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
             current_house_weight_gradient = (
-                1 / student_count
-            ) * bias_and_standardized_discipline_scores_error_sum
+                1 / students_count
+            ) * bias_and_standardized_disciplines_scores_error_sum
             print(
                 "\nCURRENT_HOUSE_WEIGHT_GRADIENT"
-                "\nCALCULE :\n(1 / student_count) * bias_and_standardized_discipline_scores_error_sum"
-                f"\n(1 / {student_count}) * {bias_and_standardized_discipline_scores_error_sum}"
-                f"\n({1 / student_count}) * {bias_and_standardized_discipline_scores_error_sum}"
+                "\nCALCULE :\n(1 / students_count) * bias_and_standardized_disciplines_scores_error_sum"
+                f"\n(1 / {students_count}) * {bias_and_standardized_disciplines_scores_error_sum}"
+                f"\n({1 / students_count}) * {bias_and_standardized_disciplines_scores_error_sum}"
                 "\n--------------------------------------------------------------"
                 f"\n= {current_house_weight_gradient}"
             )
@@ -292,45 +292,45 @@ def fit_one_vs_rest_house_classifier(
             print(f"{current_house_weights}")
 
             
-        house_discipline_weights[int(current_house_code), :] = current_house_weights
-        print(f"\nHOUSE_DISCIPLINE_WEIGHTS : \n{house_discipline_weights}")
-    return house_discipline_weights
+        house_disciplines_weights[int(current_house_code), :] = current_house_weights
+        print(f"\nHOUSE_DISCIPLINES_WEIGHTS : \n{house_disciplines_weights}")
+    return house_disciplines_weights
 
 
 def main():
     try:
         cli_arguments = parse_command_line_arguments()
         (
-            student_discipline_scores,
-            assigned_house_codes_by_student,
+            students_disciplines_scores,
+            assigned_house_codes_for_students,
             house_code_by_name,
             house_name_by_code,
             discipline_names,
         ) = load_and_prepare_dataset(cli_arguments.input_csv_path)
-        print(f"\nstudent_discipline_scores : \n{student_discipline_scores}")
+        print(f"\nstudents_disciplines_scores : \n{students_disciplines_scores}")
 
         (
-            standardized_discipline_scores,
-            average_score_by_discipline,
-            standard_deviation_by_discipline,
-        ) = standardize_discipline_scores(student_discipline_scores)
+            standardized_disciplines_scores,
+            average_scores_by_disciplines,
+            standard_deviations_by_disciplines,
+        ) = standardize_disciplines_scores(students_disciplines_scores)
 
-        student_count = standardized_discipline_scores.shape[0]
-        student_discipline_scores_with_bias = np.hstack(
-            [np.ones((student_count, 1)), standardized_discipline_scores]
+        students_count = standardized_disciplines_scores.shape[0]
+        students_disciplines_scores_with_bias = np.hstack(
+            [np.ones((students_count, 1)), standardized_disciplines_scores]
         )
-        print(f"\nstandardized_discipline_scores : \n{standardized_discipline_scores}")
-        house_discipline_weights = fit_one_vs_rest_house_classifier(
-            student_discipline_scores_with_bias,
-            assigned_house_codes_by_student,
+        print(f"\nstandardized_disciplines_scores : \n{standardized_disciplines_scores}")
+        house_disciplines_weights = fit_one_vs_rest_house_classifier(
+            students_disciplines_scores_with_bias,
+            assigned_house_codes_for_students,
             cli_arguments.learning_rate,
             cli_arguments.iteration_count,
         )
 
         trained_parameter_bundle = {
-            "thetas": house_discipline_weights.tolist(),
-            "mu": average_score_by_discipline,
-            "sigma": standard_deviation_by_discipline,
+            "thetas": house_disciplines_weights.tolist(),
+            "mu": average_scores_by_disciplines,
+            "sigma": standard_deviations_by_disciplines,
             "features": discipline_names,
             "house_map": house_code_by_name,
             "inv_house_map": house_name_by_code,
