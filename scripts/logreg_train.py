@@ -4,6 +4,11 @@ import json
 import numpy as np
 import pandas as pd
 
+try:
+    from analysis_log import AnalysisLogger
+except ImportError:
+    from scripts.analysis_log import AnalysisLogger
+
 
 def parse_command_line_arguments():
     """
@@ -15,6 +20,7 @@ def parse_command_line_arguments():
           - learning_rate (float): taux d'apprentissage
           - iteration_count (int): nombre d'iterations de gradient descent
           - output_parameter_path (str): chemin du fichier de sortie des parametres appris
+          - enable_analysis_log (bool): active les logs detailles d'analyse
     """
     argument_parser = argparse.ArgumentParser(
         description="Entrainer un classifieur logistique one-vs-all et sauvegarder ses parametres."
@@ -42,6 +48,12 @@ def parse_command_line_arguments():
         dest="output_parameter_path",
         default="weights.json",
         help="Fichier de sortie des parametres appris (defaut : 'weights.json')."
+    )
+    argument_parser.add_argument(
+        "--analysis-log",
+        dest="enable_analysis_log",
+        action="store_true",
+        help="Active les logs detailles pour analyser l'entrainement."
     )
     return argument_parser.parse_args()
 
@@ -171,6 +183,7 @@ def fit_one_vs_rest_house_classifier(
     assigned_house_codes_for_students,
     learning_rate,
     iteration_count,
+    analysis_logger,
 ):
     """
     Entraine un classifieur logistique one-vs-all.
@@ -191,115 +204,72 @@ def fit_one_vs_rest_house_classifier(
     house_count = len(unique_house_codes)
     house_disciplines_weights = np.zeros((house_count, disciplines_plus_bias_count))
 
-    # "Gryffindor", "Hufflepuff", "Ravenclaw", "Slytherin"]
     for current_house_code in unique_house_codes:
-        print("")
-        if current_house_code == 0:
-            print(f"/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
-            print(f"/*                                 HOUSE                                     */")
-            print(f"/*                               GRYFFINDOR                                  */")
-            print(f"/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
-        elif current_house_code == 1:
-            print(f"/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
-            print(f"/*                                 HOUSE                                     */")
-            print(f"/*                               HUFFLEPUFF                                  */")
-            print(f"/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
-        elif current_house_code == 2:
-            print(f"/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
-            print(f"/*                                 HOUSE                                     */")
-            print(f"/*                               RAVENCLAW                                   */")
-            print(f"/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
-        elif current_house_code == 3:
-            print(f"/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
-            print(f"/*                                 HOUSE                                     */")
-            print(f"/*                               SLYTHERIN                                   */")
-            print(f"/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
+        analysis_logger.log_house_header(current_house_code)
 
         current_house_weights = np.zeros(disciplines_plus_bias_count)
         are_students_assigned_to_current_house = (
             assigned_house_codes_for_students == current_house_code
         ).astype(float)
-
-        print(f"\nARE_STUDENTS_ASSIGNED_TO_CURRENT_HOUSE : {are_students_assigned_to_current_house}")
+        analysis_logger.log_students_assigned_to_current_house(
+            are_students_assigned_to_current_house
+        )
 
         for _ in range(iteration_count):
-            print("")
-            print(f"                        /*   -'-,-'-,-'-,-'-,-'-,-   */")
-            print(f"                        /*    ITERATION_COUNT : {_}    */")
-            print(f"                        /*   -'-,-'-,-'-,-'-,-'-,-   */")
+            analysis_logger.log_iteration_header(_)
 
             predicted_probability_of_current_house = compute_sigmoid(
                 students_disciplines_scores_with_bias.dot(current_house_weights)
             )
-            print(
-                "\nPREDICTED_PROBABILITY_OF_CURRENT_HOUSE"
-                "\nCALCULE :"
-                "\ncompute_sigmoid(students_disciplines_scores_with_bias.dot(current_house_weights))"
-                f"\ncompute_sigmoid(students_disciplines_scores_with_bias.dot({current_house_weights}))"
-                f"\ncompute_sigmoid({students_disciplines_scores_with_bias.dot(current_house_weights)})"
-                "\n--------------------------------------------------------------"    
-                f"\n= {compute_sigmoid(students_disciplines_scores_with_bias.dot(current_house_weights))}"
+            analysis_logger.log_predicted_probability(
+                students_disciplines_scores_with_bias,
+                current_house_weights,
+                predicted_probability_of_current_house,
             )
-            print(f"\n/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
             prediction_error_by_students = (
                 predicted_probability_of_current_house
                 - are_students_assigned_to_current_house
             )
-            print("\nPREDICTION_ERROR_BY_STUDENTS")
-            print(f"CALCULE :\npredicted_probability_of_current_house - are_students_assigned_to_current_house")
-            print(f"{predicted_probability_of_current_house} - {are_students_assigned_to_current_house}")
-            print(
-                "--------------------------------------------------------------"
-                f"\n= {prediction_error_by_students}"
+            analysis_logger.log_prediction_error(
+                predicted_probability_of_current_house,
+                are_students_assigned_to_current_house,
+                prediction_error_by_students,
             )
-            print(f"\n/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
             bias_and_standardized_disciplines_scores_error_sum = (
                 students_disciplines_scores_with_bias.T.dot(
                     prediction_error_by_students
                 )
             )
-            print(
-                "\nBIAS_AND_STANDARDIZED_DISCIPLINES_SCORES_ERROR_SUM"
-                "\nCALCULE :"
-                "\nstudents_disciplines_scores_with_bias.T.dot(prediction_error_by_students)"
-                f"\n{students_disciplines_scores_with_bias}"
-                f"\n                                   .T.dot({prediction_error_by_students})"      
-                "\n--------------------------------------------------------------"
-                f"\n= {bias_and_standardized_disciplines_scores_error_sum}"
+            analysis_logger.log_bias_and_standardized_disciplines_scores_error_sum(
+                students_disciplines_scores_with_bias,
+                prediction_error_by_students,
+                bias_and_standardized_disciplines_scores_error_sum,
             )
-            print(f"\n/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
             current_house_weight_gradient = (
                 1 / students_count
             ) * bias_and_standardized_disciplines_scores_error_sum
-            print(
-                "\nCURRENT_HOUSE_WEIGHT_GRADIENT"
-                "\nCALCULE :\n(1 / students_count) * bias_and_standardized_disciplines_scores_error_sum"
-                f"\n(1 / {students_count}) * {bias_and_standardized_disciplines_scores_error_sum}"
-                f"\n({1 / students_count}) * {bias_and_standardized_disciplines_scores_error_sum}"
-                "\n--------------------------------------------------------------"
-                f"\n= {current_house_weight_gradient}"
+            analysis_logger.log_current_house_weight_gradient(
+                students_count,
+                bias_and_standardized_disciplines_scores_error_sum,
+                current_house_weight_gradient,
             )
-            print(f"\n/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */")
-            print(
-                "\nCURRENT_HOUSE_WEIGHTS"
-                "\nCALCULE :\ncurrent_house_weights - learning_rate * current_house_weight_gradient"
-                f"\n{current_house_weights} - {learning_rate} * {current_house_weight_gradient}"
-                f"\n{current_house_weights} - {learning_rate * current_house_weight_gradient}"
-
-                "\n--------------------------------------------------------------"
+            analysis_logger.log_current_house_weights_before_update(
+                current_house_weights,
+                learning_rate,
+                current_house_weight_gradient,
             )
             current_house_weights -= learning_rate * current_house_weight_gradient
-            print(f"{current_house_weights}")
+            analysis_logger.log_current_house_weights_after_update(current_house_weights)
 
-            
         house_disciplines_weights[int(current_house_code), :] = current_house_weights
-        print(f"\nHOUSE_DISCIPLINES_WEIGHTS : \n{house_disciplines_weights}")
+        analysis_logger.log_house_disciplines_weights(house_disciplines_weights)
     return house_disciplines_weights
 
 
 def main():
     try:
         cli_arguments = parse_command_line_arguments()
+        analysis_logger = AnalysisLogger(cli_arguments.enable_analysis_log)
         (
             students_disciplines_scores,
             assigned_house_codes_for_students,
@@ -318,13 +288,16 @@ def main():
         students_disciplines_scores_with_bias = np.hstack(
             [np.ones((students_count, 1)), standardized_disciplines_scores]
         )
-        print(f"\nstudents_disciplines_scores : \n{students_disciplines_scores}")
-        print(f"\nstandardized_disciplines_scores : \n{standardized_disciplines_scores}")
+        analysis_logger.log_initial_scores(
+            students_disciplines_scores,
+            standardized_disciplines_scores,
+        )
         house_disciplines_weights = fit_one_vs_rest_house_classifier(
             students_disciplines_scores_with_bias,
             assigned_house_codes_for_students,
             cli_arguments.learning_rate,
             cli_arguments.iteration_count,
+            analysis_logger,
         )
 
         trained_parameter_bundle = {

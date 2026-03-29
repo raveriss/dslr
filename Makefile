@@ -22,8 +22,15 @@ ANIMATION_GIF_FINAL_FRAME_HOLD_MS = 2000
 KIVIAT_WEIGHTS = $(WEIGHTS)
 KIVIAT_OUTPUT = visuals/kiviat_house_discipline_weights.png
 KIVIAT_SMOOTH_POINTS_PER_SEGMENT = 10
+ANALYSIS_LOG_TRAIN_DATA = datasets/dataset_analyse_log_train.csv
+ANALYSIS_LOG_TRAIN_OUTPUT = weights_training.json
+ANALYSIS_LOG_TRAIN_ITERATIONS = 3
+ANALYSIS_LOG_TRAIN_ALPHA = 0.01
+ANALYSIS_LOG_PREDICT_DATA = datasets/dataset_analyse_log_predict.csv
+ANALYSIS_LOG_PREDICT_WEIGHTS = $(ANALYSIS_LOG_TRAIN_OUTPUT)
+ANALYSIS_LOG_PREDICT_OUTPUT = houses_training.csv
 
-.PHONY: all install describe histogram scatter pair train predict animate kiviat re clean fclean help
+.PHONY: all install describe histogram scatter pair train analysis_log_train predict analysis_log_predict animate kiviat re clean fclean help
 
 all: install
 
@@ -80,8 +87,20 @@ train:
 		--iterations $(TRAIN_ITERATIONS) \
 		--out $(TRAIN_OUTPUT)
 
+analysis_log_train: install
+	$(PYTHON) scripts/logreg_train.py $(ANALYSIS_LOG_TRAIN_DATA) \
+		--alpha $(ANALYSIS_LOG_TRAIN_ALPHA) \
+		--iterations $(ANALYSIS_LOG_TRAIN_ITERATIONS) \
+		--analysis-log \
+		--out $(ANALYSIS_LOG_TRAIN_OUTPUT)
+
 predict:
 	$(PYTHON) scripts/logreg_predict.py $(TEST_DATA) $(WEIGHTS)
+
+analysis_log_predict: install
+	$(PYTHON) scripts/logreg_predict.py $(ANALYSIS_LOG_PREDICT_DATA) $(ANALYSIS_LOG_PREDICT_WEIGHTS) \
+		--analysis-log \
+		--out $(ANALYSIS_LOG_PREDICT_OUTPUT)
 
 animate: install
 	$(PYTHON) scripts/animate_logreg_train.py $(ANIMATION_DATA) \
@@ -118,7 +137,9 @@ help:
 	@echo "  make scatter     - Generate scatter plot(s) from dataset_train.csv"
 	@echo "  make pair        - Generate pair plot from dataset_train.csv"
 	@echo "  make train       - Train logistic regression and save weights"
+	@echo "  make analysis_log_train - Train with verbose analysis logs on dataset_analyse_log_train.csv"
 	@echo "  make predict     - Predict houses from dataset_test.csv using weights.json"
+	@echo "  make analysis_log_predict - Predict with verbose analysis logs on dataset_analyse_log_predict.csv"
 	@echo "  make animate     - Generate training animation GIF in visuals/"
 	@echo "  make kiviat      - Generate Kiviat chart of discipline weights by house"
 	@echo "  make clean       - Remove generated files"
