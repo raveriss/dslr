@@ -307,7 +307,6 @@ def main():
             house_name_by_code,
             discipline_names,
         ) = load_and_prepare_dataset(cli_arguments.input_csv_path)
-        print(f"\nstudents_disciplines_scores : \n{students_disciplines_scores}")
 
         (
             standardized_disciplines_scores,
@@ -319,6 +318,7 @@ def main():
         students_disciplines_scores_with_bias = np.hstack(
             [np.ones((students_count, 1)), standardized_disciplines_scores]
         )
+        print(f"\nstudents_disciplines_scores : \n{students_disciplines_scores}")
         print(f"\nstandardized_disciplines_scores : \n{standardized_disciplines_scores}")
         house_disciplines_weights = fit_one_vs_rest_house_classifier(
             students_disciplines_scores_with_bias,

@@ -216,28 +216,28 @@ def predict_house_names(students_discipline_scores_with_bias, house_discipline_w
     # Pour obtenir les logits de toutes les maisons pour chaque eleve.
     house_scores_before_value_limit_for_all_students = students_discipline_scores_with_bias.dot(house_discipline_weights_with_bias.T)
     # Pour conserver un trace utile quand on diagnostique des predictions.
-    print(f"house_scores_before_value_limit_for_all_students = {house_scores_before_value_limit_for_all_students}")
+    print(f"\nHOUSE_SCORES_BEFORE_VALUE_LIMIT_FOR_ALL_STUDENTS\n= {house_scores_before_value_limit_for_all_students}")
 
     # Pour proteger np.exp des overflows sur des valeurs extremes.
     house_scores_after_value_limit_for_all_students = np.clip(house_scores_before_value_limit_for_all_students, -500, 500)
     # Pour rendre visible la valeur effectivement envoyee a la sigmoide.
-    print(f"house_scores_after_value_limit_for_all_students = {house_scores_after_value_limit_for_all_students}")
+    print(f"\nHOUSE_SCORES_AFTER_VALUE_LIMIT_FOR_ALL_STUDENTS\n= {house_scores_after_value_limit_for_all_students}")
 
     # Pour convertir les logits en scores comparables dans [0, 1].
     house_probability_scores_for_all_students = 1 / (1 + np.exp(-house_scores_after_value_limit_for_all_students))
     # Pour verifier la distribution de probabilites en cas d'anomalie.
-    print(f"house_probability_scores_for_all_students = {house_probability_scores_for_all_students}")
+    print(f"\nHOUSE_PROBABILITY_SCORES_FOR_ALL_STUDENTS\n= {house_probability_scores_for_all_students}")
     # Pour forcer une classe unique par eleve dans le schema one-vs-rest.
     predicted_house_codes_for_all_students = np.argmax(house_probability_scores_for_all_students, axis=1)
     # Pour confirmer les codes choisis avant le mapping texte.
-    print(f"predicted_house_codes_for_all_students = {predicted_house_codes_for_all_students}")
+    print(f"\nPREDICTED_HOUSE_CODES_FOR_ALL_STUDENTS\n= {predicted_house_codes_for_all_students}")
 
     # Pour traduire chaque code numerique en nom de maison exportable.
     predicted_house_names_for_all_students = [house_name_by_code[int(house_code)] for house_code in predicted_house_codes_for_all_students]
     # Pour offrir un diagnostic direct lisible sans ouvrir le CSV final.
-    print(f"predicted_house_names_for_all_students = {predicted_house_names_for_all_students}")
+    print(f"\nPREDICTED_HOUSE_NAMES_FOR_ALL_STUDENTS\n= {predicted_house_names_for_all_students}")
     # Pour verifier rapidement qu'aucune ligne n'a ete perdue en route.
-    print(f"predicted_house_names_for_all_students = {len(predicted_house_names_for_all_students)}")
+    print(f"\nNUMBER_OF_PREDICTED_HOUSE_NAMES_FOR_ALL_STUDENTS\n= {len(predicted_house_names_for_all_students)}")
 
     # Pour renvoyer une sequence de labels prete a etre exportee.
     return predicted_house_names_for_all_students
