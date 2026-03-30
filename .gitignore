@@ -7,3 +7,5 @@ visual_pair/
 visual_scatter/
 *.json
 *.csv
+!datasets/dataset_analyse_log_predict.csv
+!datasets/dataset_analyse_log_train.csv
