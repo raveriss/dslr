@@ -36,7 +36,7 @@ class AnalysisPredictLogger:
             "\n(students_discipline_scores - average_discipline_scores) / discipline_standard_deviations"
             f"\n({students_discipline_scores.to_numpy(dtype=float)} - {np.array(average_discipline_scores, dtype=float)}) / {np.array(discipline_standard_deviations, dtype=float)}"
             f"\n{self.VALUE_SEPARATOR}"
-            f"\n= {standardized_students_discipline_scores}"
+            f"\n=\n{standardized_students_discipline_scores}"
         )
 
     def log_students_discipline_scores_with_bias(
@@ -54,7 +54,7 @@ class AnalysisPredictLogger:
             "\nnp.hstack([np.ones((students_count, 1)), standardized_students_discipline_scores])"
             f"\nnp.hstack([np.ones(({students_count}, 1)), {standardized_students_discipline_scores}])"
             f"\n{self.VALUE_SEPARATOR}"
-            f"\n= {students_discipline_scores_with_bias}"
+            f"\n=\n{students_discipline_scores_with_bias}"
         )
 
     def log_house_scores_before_value_limit_for_all_students(
@@ -72,7 +72,7 @@ class AnalysisPredictLogger:
             "\nstudents_discipline_scores_with_bias.dot(house_discipline_weights_with_bias.T)"
             f"\n{students_discipline_scores_with_bias}.dot({house_discipline_weights_with_bias}.T)"
             f"\n{self.VALUE_SEPARATOR}"
-            f"\n= {house_scores_before_value_limit_for_all_students}"
+            f"\n=\n{house_scores_before_value_limit_for_all_students}"
         )
 
     def log_house_scores_after_value_limit_for_all_students(
@@ -89,7 +89,7 @@ class AnalysisPredictLogger:
             "\nnp.clip(house_scores_before_value_limit_for_all_students, -500, 500)"
             f"\nnp.clip({house_scores_before_value_limit_for_all_students}, -500, 500)"
             f"\n{self.VALUE_SEPARATOR}"
-            f"\n= {house_scores_after_value_limit_for_all_students}"
+            f"\n=\n{house_scores_after_value_limit_for_all_students}"
         )
 
     def log_house_probability_scores_for_all_students(
@@ -106,7 +106,7 @@ class AnalysisPredictLogger:
             "\n1 / (1 + np.exp(-house_scores_after_value_limit_for_all_students))"
             f"\n1 / (1 + np.exp(-{house_scores_after_value_limit_for_all_students}))"
             f"\n{self.VALUE_SEPARATOR}"
-            f"\n= {house_probability_scores_for_all_students}"
+            f"\n=\n{house_probability_scores_for_all_students}"
         )
 
     def log_predicted_house_codes_for_all_students(
@@ -123,7 +123,7 @@ class AnalysisPredictLogger:
             "\nnp.argmax(house_probability_scores_for_all_students, axis=1)"
             f"\nnp.argmax({house_probability_scores_for_all_students}, axis=1)"
             f"\n{self.VALUE_SEPARATOR}"
-            f"\n= {predicted_house_codes_for_all_students}"
+            f"\n=\n{predicted_house_codes_for_all_students}"
         )
 
     def log_predicted_house_names_for_all_students(
@@ -142,7 +142,7 @@ class AnalysisPredictLogger:
             f"\nhouse_name_by_code = {house_name_by_code}"
             f"\n[house_name_by_code[int(house_code)] for house_code in {predicted_house_codes_for_all_students}]"
             f"\n{self.VALUE_SEPARATOR}"
-            f"\n= {predicted_house_names_for_all_students}"
+            f"\n=\n{predicted_house_names_for_all_students}"
         )
         self._log_graphical_separator()
         print(
@@ -151,5 +151,5 @@ class AnalysisPredictLogger:
             "\nlen(predicted_house_names_for_all_students)"
             f"\nlen({predicted_house_names_for_all_students})"
             f"\n{self.VALUE_SEPARATOR}"
-            f"\n= {len(predicted_house_names_for_all_students)}"
+            f"\n=\n{len(predicted_house_names_for_all_students)}"
         )
