@@ -11,11 +11,11 @@ import pandas as pd
 # Pour accepter l'execution depuis le dossier scripts directement.
 try:
     # Pour charger le logger d'analyse en mode script local.
-    from analysis_log import AnalysisLogger
+    from analysis_log_train import AnalysisLogger
 # Pour rester compatible si l'import local n'est pas resolu.
 except ImportError:
     # Pour charger le meme logger via le chemin package scripts.
-    from scripts.analysis_log import AnalysisLogger
+    from scripts.analysis_log_train import AnalysisLogger
 
 
 # Pour centraliser la definition des options CLI de logreg_train.
@@ -140,6 +140,82 @@ def compute_sigmoid(linear_score_array):
     return 1.0 / (1.0 + np.exp(-linear_score_array))
 
 
+# Pour regrouper les logs lies au contexte d'une maison one-vs-all.
+def log_house_training_context(analysis_logger, current_house_code, are_students_assigned_to_current_house):
+    """
+    Emet les logs d'entree de boucle maison.
+
+    Args:
+        analysis_logger (AnalysisLogger): logger d'analyse conditionnel.
+        current_house_code (int): code de la maison courante.
+        are_students_assigned_to_current_house (numpy.ndarray): cible binaire.
+    """
+    analysis_logger.log_house_header(current_house_code)
+    analysis_logger.log_students_assigned_to_current_house(are_students_assigned_to_current_house)
+
+
+# Pour regrouper les logs d'une iteration avant la mise a jour des poids.
+def log_house_iteration_before_weight_update(
+    analysis_logger,
+    iteration_index,
+    students_disciplines_scores_with_bias,
+    current_house_weights,
+    predicted_probability_of_current_house,
+    are_students_assigned_to_current_house,
+    prediction_error_by_students,
+    bias_and_standardized_disciplines_scores_error_sum,
+    students_count,
+    current_house_weight_gradient,
+    learning_rate,
+):
+    """
+    Emet les logs detailles d'une iteration avant update.
+
+    Args:
+        analysis_logger (AnalysisLogger): logger d'analyse conditionnel.
+        iteration_index (int): index d'iteration de GD.
+        students_disciplines_scores_with_bias (numpy.ndarray): X avec biais.
+        current_house_weights (numpy.ndarray): poids actuels.
+        predicted_probability_of_current_house (numpy.ndarray): proba pre-update.
+        are_students_assigned_to_current_house (numpy.ndarray): cible binaire.
+        prediction_error_by_students (numpy.ndarray): erreur proba-cible.
+        bias_and_standardized_disciplines_scores_error_sum (numpy.ndarray): somme des erreurs ponderees.
+        students_count (int): nombre d'eleves dans le batch.
+        current_house_weight_gradient (numpy.ndarray): gradient moyen.
+        learning_rate (float): pas de descente de gradient.
+    """
+    analysis_logger.log_iteration_header(iteration_index)
+    analysis_logger.log_predicted_probability(students_disciplines_scores_with_bias, current_house_weights, predicted_probability_of_current_house)
+    analysis_logger.log_prediction_error(predicted_probability_of_current_house, are_students_assigned_to_current_house, prediction_error_by_students)
+    analysis_logger.log_bias_and_standardized_disciplines_scores_error_sum(students_disciplines_scores_with_bias, prediction_error_by_students, bias_and_standardized_disciplines_scores_error_sum)
+    analysis_logger.log_current_house_weight_gradient(students_count, bias_and_standardized_disciplines_scores_error_sum, current_house_weight_gradient)
+    analysis_logger.log_current_house_weights_before_update(current_house_weights, learning_rate, current_house_weight_gradient)
+
+
+# Pour isoler le log post-update des poids d'iteration.
+def log_house_iteration_after_weight_update(analysis_logger, current_house_weights):
+    """
+    Emet le log des poids apres la mise a jour d'iteration.
+
+    Args:
+        analysis_logger (AnalysisLogger): logger d'analyse conditionnel.
+        current_house_weights (numpy.ndarray): poids apres update.
+    """
+    analysis_logger.log_current_house_weights_after_update(current_house_weights)
+
+
+# Pour isoler le log recapitulatif des poids apres une maison.
+def log_house_weights_summary(analysis_logger, house_disciplines_weights):
+    """
+    Emet le log de synthese des poids apres la boucle maison.
+
+    Args:
+        analysis_logger (AnalysisLogger): logger d'analyse conditionnel.
+        house_disciplines_weights (numpy.ndarray): matrice complete des poids.
+    """
+    analysis_logger.log_house_disciplines_weights(house_disciplines_weights)
+
+
 # Pour entrainer un modele one-vs-all maison par maison.
 def fit_one_vs_rest_house_classifier(students_disciplines_scores_with_bias, assigned_house_codes_for_students, learning_rate, iteration_count, analysis_logger):
     """
@@ -165,44 +241,44 @@ def fit_one_vs_rest_house_classifier(students_disciplines_scores_with_bias, assi
     house_disciplines_weights = np.zeros((house_count, disciplines_plus_bias_count))
     # Pour entrainer une regression binaire independente par maison.
     for current_house_code in unique_house_codes:
-        # Pour rendre le diagnostic lisible maison par maison.
-        analysis_logger.log_house_header(current_house_code)
         # Pour repartir de zero pour le classifieur binaire courant.
         current_house_weights = np.zeros(disciplines_plus_bias_count)
         # Pour construire la cible binaire de la maison courante.
         are_students_assigned_to_current_house = (assigned_house_codes_for_students == current_house_code).astype(float)
-        # Pour exposer la cible binaire dans le mode analyse.
-        analysis_logger.log_students_assigned_to_current_house(are_students_assigned_to_current_house)
+        # Pour exposer le contexte de la maison courante en mode analyse.
+        log_house_training_context(analysis_logger, current_house_code, are_students_assigned_to_current_house)
         # Pour appliquer les mises a jour de gradient un nombre fixe de fois.
         for iteration_index in range(iteration_count):
-            # Pour localiser les evolutions de poids par iteration.
-            analysis_logger.log_iteration_header(iteration_index)
             # Pour produire les probabilites de la maison courante.
             predicted_probability_of_current_house = compute_sigmoid(students_disciplines_scores_with_bias.dot(current_house_weights))
-            # Pour rendre la prediction intermediaire audit-able.
-            analysis_logger.log_predicted_probability(students_disciplines_scores_with_bias, current_house_weights, predicted_probability_of_current_house)
             # Pour mesurer l'ecart signe entre prediction et cible binaire.
             prediction_error_by_students = predicted_probability_of_current_house - are_students_assigned_to_current_house
-            # Pour diagnostiquer la direction de correction par eleve.
-            analysis_logger.log_prediction_error(predicted_probability_of_current_house, are_students_assigned_to_current_house, prediction_error_by_students)
             # Pour agreger l'erreur sur chaque coefficient via X^T . erreur.
             bias_and_standardized_disciplines_scores_error_sum = students_disciplines_scores_with_bias.T.dot(prediction_error_by_students)
-            # Pour rendre lisible la contribution de chaque variable.
-            analysis_logger.log_bias_and_standardized_disciplines_scores_error_sum(students_disciplines_scores_with_bias, prediction_error_by_students, bias_and_standardized_disciplines_scores_error_sum)
             # Pour moyenner le gradient et garder un pas stable.
             current_house_weight_gradient = (1 / students_count) * bias_and_standardized_disciplines_scores_error_sum
-            # Pour confirmer la valeur exacte du gradient utilise.
-            analysis_logger.log_current_house_weight_gradient(students_count, bias_and_standardized_disciplines_scores_error_sum, current_house_weight_gradient)
-            # Pour tracer la formule de mise a jour avant application.
-            analysis_logger.log_current_house_weights_before_update(current_house_weights, learning_rate, current_house_weight_gradient)
+            # Pour centraliser les logs detailles de l'iteration pre-update.
+            log_house_iteration_before_weight_update(
+                analysis_logger,
+                iteration_index,
+                students_disciplines_scores_with_bias,
+                current_house_weights,
+                predicted_probability_of_current_house,
+                are_students_assigned_to_current_house,
+                prediction_error_by_students,
+                bias_and_standardized_disciplines_scores_error_sum,
+                students_count,
+                current_house_weight_gradient,
+                learning_rate,
+            )
             # Pour appliquer la descente de gradient sur les poids courants.
             current_house_weights -= learning_rate * current_house_weight_gradient
-            # Pour afficher les poids apres la mise a jour de l'iteration.
-            analysis_logger.log_current_house_weights_after_update(current_house_weights)
+            # Pour afficher les poids apres update via un helper dedie.
+            log_house_iteration_after_weight_update(analysis_logger, current_house_weights)
         # Pour stocker les poids finaux de la maison a son index canonique.
         house_disciplines_weights[int(current_house_code), :] = current_house_weights
-        # Pour afficher l'etat global des poids en mode analyse.
-        analysis_logger.log_house_disciplines_weights(house_disciplines_weights)
+        # Pour afficher l'etat global des poids via helper dedie.
+        log_house_weights_summary(analysis_logger, house_disciplines_weights)
     # Pour renvoyer la matrice de poids complete au flux principal.
     return house_disciplines_weights
 

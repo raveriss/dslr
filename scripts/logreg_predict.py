@@ -206,6 +206,112 @@ def standardize_discipline_scores(students_discipline_scores, average_discipline
     return standardized_students_discipline_scores
 
 
+# Pour isoler le log des logits avant protection numerique.
+def log_prediction_house_scores_before_clip(
+    analysis_predict_logger,
+    students_discipline_scores_with_bias,
+    house_discipline_weights_with_bias,
+    house_scores_before_value_limit_for_all_students,
+):
+    """
+    Emet le log des scores bruts du modele.
+
+    Args:
+        analysis_predict_logger (AnalysisPredictLogger): logger conditionnel.
+        students_discipline_scores_with_bias (numpy.ndarray): X avec biais.
+        house_discipline_weights_with_bias (numpy.ndarray): poids appris.
+        house_scores_before_value_limit_for_all_students (numpy.ndarray): logits bruts.
+    """
+    analysis_predict_logger.log_house_scores_before_value_limit_for_all_students(
+        students_discipline_scores_with_bias,
+        house_discipline_weights_with_bias,
+        house_scores_before_value_limit_for_all_students
+    )
+
+
+# Pour isoler le log des logits apres clipping numerique.
+def log_prediction_house_scores_after_clip(
+    analysis_predict_logger,
+    house_scores_before_value_limit_for_all_students,
+    house_scores_after_value_limit_for_all_students,
+):
+    """
+    Emet le log des scores apres clipping.
+
+    Args:
+        analysis_predict_logger (AnalysisPredictLogger): logger conditionnel.
+        house_scores_before_value_limit_for_all_students (numpy.ndarray): logits avant clipping.
+        house_scores_after_value_limit_for_all_students (numpy.ndarray): logits apres clipping.
+    """
+    analysis_predict_logger.log_house_scores_after_value_limit_for_all_students(
+        house_scores_before_value_limit_for_all_students,
+        house_scores_after_value_limit_for_all_students
+    )
+
+
+# Pour isoler le log des probabilites one-vs-rest.
+def log_prediction_house_probabilities(
+    analysis_predict_logger,
+    house_scores_after_value_limit_for_all_students,
+    house_probability_scores_for_all_students,
+):
+    """
+    Emet le log des probabilites predites.
+
+    Args:
+        analysis_predict_logger (AnalysisPredictLogger): logger conditionnel.
+        house_scores_after_value_limit_for_all_students (numpy.ndarray): logits clip.
+        house_probability_scores_for_all_students (numpy.ndarray): probabilites finales.
+    """
+    analysis_predict_logger.log_house_probability_scores_for_all_students(
+        house_scores_after_value_limit_for_all_students,
+        house_probability_scores_for_all_students
+    )
+
+
+# Pour isoler le log des codes de classes predits.
+def log_prediction_house_codes(
+    analysis_predict_logger,
+    house_probability_scores_for_all_students,
+    predicted_house_codes_for_all_students,
+):
+    """
+    Emet le log des classes predites en codes entiers.
+
+    Args:
+        analysis_predict_logger (AnalysisPredictLogger): logger conditionnel.
+        house_probability_scores_for_all_students (numpy.ndarray): probabilites par classe.
+        predicted_house_codes_for_all_students (numpy.ndarray): code argmax par eleve.
+    """
+    analysis_predict_logger.log_predicted_house_codes_for_all_students(
+        house_probability_scores_for_all_students,
+        predicted_house_codes_for_all_students
+    )
+
+
+# Pour isoler le log des labels finaux apres mapping code->nom.
+def log_prediction_house_names(
+    analysis_predict_logger,
+    house_name_by_code,
+    predicted_house_codes_for_all_students,
+    predicted_house_names_for_all_students,
+):
+    """
+    Emet le log des labels de maisons finaux.
+
+    Args:
+        analysis_predict_logger (AnalysisPredictLogger): logger conditionnel.
+        house_name_by_code (dict[int, str]): table de mapping code->nom.
+        predicted_house_codes_for_all_students (numpy.ndarray): codes predits.
+        predicted_house_names_for_all_students (list[str]): noms predits.
+    """
+    analysis_predict_logger.log_predicted_house_names_for_all_students(
+        house_name_by_code,
+        predicted_house_codes_for_all_students,
+        predicted_house_names_for_all_students
+    )
+
+
 # Cette fonction applique le modele one-vs-rest a tous les eleves.
 def predict_house_names(
     students_discipline_scores_with_bias,
@@ -228,7 +334,8 @@ def predict_house_names(
     """
     # Pour obtenir les logits de toutes les maisons pour chaque eleve.
     house_scores_before_value_limit_for_all_students = students_discipline_scores_with_bias.dot(house_discipline_weights_with_bias.T)
-    analysis_predict_logger.log_house_scores_before_value_limit_for_all_students(
+    log_prediction_house_scores_before_clip(
+        analysis_predict_logger,
         students_discipline_scores_with_bias,
         house_discipline_weights_with_bias,
         house_scores_before_value_limit_for_all_students
@@ -236,27 +343,31 @@ def predict_house_names(
 
     # Pour proteger np.exp des overflows sur des valeurs extremes.
     house_scores_after_value_limit_for_all_students = np.clip(house_scores_before_value_limit_for_all_students, -500, 500)
-    analysis_predict_logger.log_house_scores_after_value_limit_for_all_students(
+    log_prediction_house_scores_after_clip(
+        analysis_predict_logger,
         house_scores_before_value_limit_for_all_students,
         house_scores_after_value_limit_for_all_students
     )
 
     # Pour convertir les logits en scores comparables dans [0, 1].
     house_probability_scores_for_all_students = 1 / (1 + np.exp(-house_scores_after_value_limit_for_all_students))
-    analysis_predict_logger.log_house_probability_scores_for_all_students(
+    log_prediction_house_probabilities(
+        analysis_predict_logger,
         house_scores_after_value_limit_for_all_students,
         house_probability_scores_for_all_students
     )
     # Pour forcer une classe unique par eleve dans le schema one-vs-rest.
     predicted_house_codes_for_all_students = np.argmax(house_probability_scores_for_all_students, axis=1)
-    analysis_predict_logger.log_predicted_house_codes_for_all_students(
+    log_prediction_house_codes(
+        analysis_predict_logger,
         house_probability_scores_for_all_students,
         predicted_house_codes_for_all_students
     )
 
     # Pour traduire chaque code numerique en nom de maison exportable.
     predicted_house_names_for_all_students = [house_name_by_code[int(house_code)] for house_code in predicted_house_codes_for_all_students]
-    analysis_predict_logger.log_predicted_house_names_for_all_students(
+    log_prediction_house_names(
+        analysis_predict_logger,
         house_name_by_code,
         predicted_house_codes_for_all_students,
         predicted_house_names_for_all_students
