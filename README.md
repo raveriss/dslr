@@ -1,4 +1,4 @@
-# DSLR (42) - DataScience x Logistic Regression
+# Machine Learning Pipeline for Student House Classification (Python) - DSLR
 
 <div align="center">
 
@@ -6,34 +6,32 @@
 
 </div>
 
-
-Projet de classification multi-classe pour le sujet **DSLR** de 42.
-Le but est de reconstruire un "Sorting Hat" avec une **régression logistique one-vs-all** implémentée sans fonctions "heavy-lifting" interdites par le sujet.
+Projet d'IA appliquée qui implémente un pipeline complet de classification multi-classe, de l'exploration de données jusqu'à l'inférence.
 
 ## Table des matières
 
-- [1. Vue d'ensemble](#1-vue-densemble)
-- [2. Objectifs du projet](#2-objectifs-du-projet)
-- [3. Contexte pédagogique (42 / IA / ML)](#3-contexte-pédagogique-42--ia--ml)
-- [4. Quick start (3 minutes)](#4-quick-start-3-minutes)
+- [Vue d'ensemble](#1-vue-densemble)
+- [🎯 Objectifs du projet](#2-objectifs-du-projet)
+- [Contexte pédagogique (42 / IA / ML)](#3-contexte-pédagogique-42--ia--ml)
+- [🚀 Quick start (3 minutes)](#4-quick-start-3-minutes)
 - [Documentation](#documentation)
-- [5. Prérequis](#5-prérequis)
-- [6. Installation](#6-installation)
-- [7. Utilisation](#7-utilisation)
-- [8. Scripts obligatoires du sujet DSLR](#8-scripts-obligatoires-du-sujet-dslr)
-- [9. Entrées / sorties importantes](#9-entrées--sorties-importantes)
-- [10. Commandes Make](#10-commandes-make)
-- [11. Structure du projet](#11-structure-du-projet)
-- [12. Tests, qualité et outils de dev](#12-tests-qualité-et-outils-de-dev)
-- [13. Conformité au sujet DSLR (checklist)](#13-conformité-au-sujet-dslr-checklist)
-- [14. Troubleshooting](#14-troubleshooting)
-- [15. Bonus / améliorations possibles](#15-bonus--améliorations-possibles)
-- [16. Stack technique](#16-stack-technique)
-- [17. Ressources](#17-ressources)
-- [18. Licence](#18-licence)
-- [19. Auteur](#19-auteur)
+- [Prérequis](#5-prérequis)
+- [Installation](#6-installation)
+- [Utilisation](#7-utilisation)
+- [Scripts obligatoires du sujet DSLR](#8-scripts-obligatoires-du-sujet-dslr)
+- [Entrées / sorties importantes](#9-entrées--sorties-importantes)
+- [📋 Commandes Make](#10-commandes-make)
+- [🗂️ Structure du projet](#11-structure-du-projet)
+- [🧪 Tests, qualité et outils de dev](#12-tests-qualité-et-outils-de-dev)
+- [Conformité au sujet DSLR (checklist)](#13-conformité-au-sujet-dslr-checklist)
+- [Troubleshooting](#14-troubleshooting)
+- [Bonus / améliorations possibles](#15-bonus--améliorations-possibles)
+- [Stack technique](#16-stack-technique)
+- [Ressources](#17-ressources)
+- [🛡️ Licence](#18-licence)
+- [👥 Auteur](#19-auteur)
 
-## 1. Vue d'ensemble
+## Vue d'ensemble
 
 Ce dépôt contient :
 - des scripts d'exploration de données (`describe`, `histogram`, `scatter_plot`, `pair_plot`) ;
@@ -43,14 +41,40 @@ Ce dépôt contient :
 Le flux principal est :
 `comprendre les données -> visualiser -> entraîner -> prédire -> comparer`.
 
-### 1.1 Pipeline détaillé
+## Carte du pipeline
+
+```mermaid
+mindmap
+  root((Student House Classification))
+    Data Ingestion
+      Train CSV
+      Test CSV
+    Data Profiling
+      Descriptive stats
+      Distribution checks
+    Feature Exploration
+      Histograms
+      Scatter plot
+      Pair plot
+    Model Training
+      Standardization
+      One-vs-rest logistic regression
+      Gradient descent
+      Model artifact: weights.json
+    Inference
+      Reuse train normalization stats
+      Predict class by max probability
+      Output artifact: houses.csv
+```
+
+### Pipeline détaillé
 
 Le détail du pipeline est maintenant documenté dans `docs/` :
 - [Pipeline global](docs/pipeline.md)
 - [Étapes du training](docs/training.md)
 - [Étapes de la prédiction](docs/prediction.md)
 
-## 2. Objectifs du projet
+## Objectifs du projet
 
 - Implémenter une analyse descriptive sans `DataFrame.describe()`.
 - Répondre aux 3 questions de visualisation imposées par le sujet.
@@ -58,7 +82,7 @@ Le détail du pipeline est maintenant documenté dans `docs/` :
 - Utiliser la **descente de gradient** pour l'entraînement.
 - Générer `houses.csv` au format attendu.
 
-## 3. Contexte pédagogique (42 / IA / ML)
+## Contexte pédagogique (42 / IA / ML)
 
 Ce projet fait partie du cursus 42 autour de l'IA/ML :
 - lecture et nettoyage d'un dataset ;
@@ -67,7 +91,7 @@ Ce projet fait partie du cursus 42 autour de l'IA/ML :
 
 Le sujet impose une partie technique, mais aussi une capacité à expliquer les notions (mean/std/quartiles, normalisation, one-vs-all, etc.) pendant la soutenance.
 
-## 4. Quick start (3 minutes)
+## Quick start (3 minutes)
 
 ```bash
 # 1) Cloner
@@ -94,7 +118,7 @@ Résultats attendus :
 - [Étapes du training](docs/training.md)
 - [Étapes de la prédiction](docs/prediction.md)
 
-## 5. Prérequis
+## Prérequis
 
 - `python3` (version minimale officielle : `[À compléter]`)
 - `make`
@@ -106,7 +130,7 @@ Dépendances Python installées depuis `requirements.txt` :
 - `matplotlib`
 - `scikit-learn` (utile pour le benchmark, pas pour l'algorithme "from scratch")
 
-## 6. Installation
+## Installation
 
 ### Option A (recommandée)
 
@@ -119,9 +143,9 @@ Cette commande exécute `make install` :
 - installation des dépendances via `pip install -r requirements.txt`.
 
 
-## 7. Utilisation
+## Utilisation
 
-### 7.1 Exploration des données
+### Exploration des données
 
 ```bash
 make describe
@@ -138,7 +162,7 @@ Sorties générées :
 Format par défaut des visuels :
 - `1920x1080` (`16:9`) pour `histogram`, `scatter` et `pair_plot` (affichage homogène sur écran PC portable).
 
-### 7.1.1 Correspondance commandes -> graphiques
+### Correspondance commandes -> graphiques
 
 | Commande | Graphique généré | Aperçu |
 |---|---|---|
@@ -149,12 +173,12 @@ Format par défaut des visuels :
 | `make kiviat` | `kiviat_house_discipline_weights` |![Kiviat example](docs/assets/kiviat_house_discipline_weights.png) |
 
 
-### 7.2 Entraînement et prédiction
+### Entraînement et prédiction
 
 Le pipeline minimum (`make train` puis `make predict`) est déjà montré dans le **Quick start**.
 Cette section regroupe surtout les variantes d'exécution utiles pour l'analyse.
 
-### 7.2.1 Mode analyse détaillée (verbose)
+### Mode analyse détaillée (verbose)
 
 ```bash
 make analysis_log_train
@@ -166,14 +190,14 @@ Sorties générées :
 - `houses_training.csv` (prédictions sur dataset d'analyse)
 - logs détaillés en console (gradients, scores, probabilités, etc.)
 
-### 7.3 Exemple en ligne de commande (sans Make)
+### Exemple en ligne de commande (sans Make)
 
 ```bash
 .venv/bin/python scripts/logreg_train.py datasets/dataset_train.csv --alpha 0.01 --iterations 1000 --out weights.json
 .venv/bin/python scripts/logreg_predict.py datasets/dataset_test.csv weights.json --out houses.csv
 ```
 
-## 8. Scripts obligatoires du sujet DSLR
+## Scripts obligatoires du sujet DSLR
 
 | Script | Statut sujet | Question/objectif | Entrée principale | Sortie principale |
 |---|---|---|---|---|
@@ -184,7 +208,7 @@ Sorties générées :
 | `scripts/logreg_train.py` | `Obligatoire` | Entraîner la régression logistique multi-classe one-vs-all via gradient descent | `dataset_train.csv` | `weights.json` |
 | `scripts/logreg_predict.py` | `Obligatoire` | Prédire et générer le fichier de rendu | `dataset_test.csv` + `weights.json` | `houses.csv` |
 
-## 9. Entrées / sorties importantes
+## Entrées / sorties importantes
 
 ### Fichiers d'entrée
 
@@ -219,7 +243,7 @@ Index,Hogwarts House
 - `weights_training.json`, `houses_training.csv`
   - artefacts du mode `analysis_log_*`
 
-## 10. Commandes Make
+## Commandes Make
 
 | Commande | Rôle | Sortie / effet principal |
 |---|---|---|
@@ -240,7 +264,142 @@ Index,Hogwarts House
 | `make re` | Réinitialisation environnement | `fclean` puis `all` |
 | `make help` | Aide intégrée | affichage des targets |
 
-## 11. Structure du projet
+## Sorties terminal (tronquées)
+
+### `make install`
+
+```bash
+$ make install
+.venv/bin/pip install -r requirements.txt
+Requirement already satisfied: numpy ...
+Requirement already satisfied: pandas ...
+Requirement already satisfied: matplotlib ...
+Requirement already satisfied: scikit-learn ...
+...
+```
+
+### `make analysis_log_train`
+
+```bash
+$ make analysis_log_train
+.venv/bin/python scripts/logreg_train.py datasets/dataset_analyse_log_train.csv \
+  --alpha 0.01 --iterations 3 --analysis-log --out weights_training.json
+
+students_disciplines_scores : 
+    Astronomy  Muggle Studies    Potions  Flying
+0 -487.886086      272.035831   3.790369  -26.89
+1 -552.060507     -487.340557   7.248742 -113.45
+2  527.193585     -398.101991   2.068824   -0.09
+3  697.742809     -537.001128   0.821911  200.64
+4 -613.687160     -440.997704  11.751212  -34.69
+5  628.046051     -926.892512   1.646666  261.55
+
+standardized_disciplines_scores : 
+[[-0.88676716  1.95008428 -0.19933026 -0.55263993]
+ [-0.99597189 -0.19063607  0.70267424 -1.19272173]
+ [ 0.84057989  0.06093195 -0.64833946 -0.35446304]
+ [ 1.13080114 -0.33063173 -0.97355648  1.12986712]
+ [-1.10084111 -0.05999323  1.87699766 -0.61031828]
+ [ 1.01219913 -1.42975521 -0.7584457   1.58027587]]
+
+/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */
+/*                                 HOUSE                                     */
+/*                               GRYFFINDOR                                  */
+/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */
+
+ARE_STUDENTS_ASSIGNED_TO_CURRENT_HOUSE : [0. 0. 0. 1. 0. 1.]
+
+                        /*   -'-,-'-,-'-,-'-,-'-,-   */
+                        /*    ITERATION_COUNT : 0    */
+                        /*   -'-,-'-,-'-,-'-,-'-,-   */
+
+PREDICTED_PROBABILITY_OF_CURRENT_HOUSE
+CALCULE :
+compute_sigmoid(students_disciplines_scores_with_bias.dot(current_house_weights))
+compute_sigmoid(students_disciplines_scores_with_bias.dot([0. 0. 0. 0. 0.]))
+compute_sigmoid([0. 0. 0. 0. 0. 0.])
+--------------------------------------------------------------
+= [0.5 0.5 0.5 0.5 0.5 0.5]
+
+PREDICTION_ERROR_BY_STUDENTS
+CALCULE :
+predicted_probability_of_current_house - are_students_assigned_to_current_house
+[0.5 0.5 0.5 0.5 0.5 0.5] - [0. 0. 0. 1. 0. 1.]
+--------------------------------------------------------------
+= [ 0.5  0.5  0.5 -0.5  0.5 -0.5]
+
+...
+
+/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */
+
+CURRENT_HOUSE_WEIGHTS
+CALCULE :
+current_house_weights - learning_rate * current_house_weight_gradient
+[0. 0. 0. 0. 0.] - 0.01 * [ 0.16666667 -0.35716671  0.29339782  0.28866703 -0.4516905 ]
+[0. 0. 0. 0. 0.] - [ 0.00166667 -0.00357167  0.00293398  0.00288667 -0.0045169 ]
+--------------------------------------------------------------
+[-0.00166667  0.00357167 -0.00293398 -0.00288667  0.0045169 ]
+```
+
+### `make analysis_log_predict`
+
+```bash
+STUDENTS_DISCIPLINE_SCORES
+= 
+    Astronomy  Muggle Studies    Potions  Flying
+0 -487.886086      272.035831   3.790369  -26.89
+1 -552.060507     -487.340557   7.248742 -113.45
+2  527.193585     -398.101991   2.068824   -0.09
+3  697.742809     -537.001128   0.821911  200.64
+4 -613.687160     -440.997704  11.751212  -34.69
+5  628.046051     -926.892512   1.646666  261.55
+
+/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */
+
+STANDARDIZED_STUDENTS_DISCIPLINE_SCORES
+CALCULE :
+(students_discipline_scores - average_discipline_scores) / discipline_standard_deviations
+([[-4.87886086e+02  2.72035831e+02  3.79036907e+00 -2.68900000e+01]
+ [-5.52060507e+02 -4.87340557e+02  7.24874198e+00 -1.13450000e+02]
+ [ 5.27193585e+02 -3.98101991e+02  2.06882418e+00 -9.00000000e-02]
+ [ 6.97742809e+02 -5.37001128e+02  8.21910501e-01  2.00640000e+02]
+ [-6.13687160e+02 -4.40997704e+02  1.17512120e+01 -3.46900000e+01]
+ [ 6.28046051e+02 -9.26892512e+02  1.64666614e+00  2.61550000e+02]] - [  33.22478191 -419.71634351    4.55462065   47.845     ]) / [587.65241946 354.72937305   3.83409716 135.23271716]
+--------------------------------------------------------------
+=
+[[-0.88676716  1.95008428 -0.19933026 -0.55263993]
+ [-0.99597189 -0.19063607  0.70267424 -1.19272173]
+ [ 0.84057989  0.06093195 -0.64833946 -0.35446304]
+ [ 1.13080114 -0.33063173 -0.97355648  1.12986712]
+ [-1.10084111 -0.05999323  1.87699766 -0.61031828]
+ [ 1.01219913 -1.42975521 -0.7584457   1.58027587]]
+
+...
+
+/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */
+
+PREDICTED_HOUSE_NAMES_FOR_ALL_STUDENTS
+CALCULE :
+[house_name_by_code[int(house_code)] for house_code in predicted_house_codes_for_all_students]
+house_name_by_code = {0: 'Gryffindor', 1: 'Hufflepuff', 2: 'Ravenclaw', 3: 'Slytherin'}
+[house_name_by_code[int(house_code)] for house_code in [2 3 0 0 3 0]]
+--------------------------------------------------------------
+=
+['Ravenclaw', 'Slytherin', 'Gryffindor', 'Gryffindor', 'Slytherin', 'Gryffindor']
+
+/*   -'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-'-,-',-'   */
+
+NUMBER_OF_PREDICTED_HOUSE_NAMES_FOR_ALL_STUDENTS
+CALCULE :
+len(predicted_house_names_for_all_students)
+len(['Ravenclaw', 'Slytherin', 'Gryffindor', 'Gryffindor', 'Slytherin', 'Gryffindor'])
+--------------------------------------------------------------
+=
+6
+→ Fichier de prediction enregistre dans houses_training.csv
+```
+
+## Structure du projet
 
 ```text
 dslr/
@@ -267,7 +426,7 @@ dslr/
 └── README.md
 ```
 
-## 12. Tests, qualité et outils de dev
+## Tests, qualité et outils de dev
 
 ### Ce qui est présent
 
@@ -283,7 +442,7 @@ dslr/
 Ce script entraîne un modèle scikit-learn, génère `houses_sklearn.csv`, puis compare avec `houses.csv`.
 
 
-## 13. Conformité au sujet DSLR (checklist)
+## Conformité au sujet DSLR (checklist)
 
 ### Obligatoire sujet
 
@@ -304,7 +463,7 @@ Ce script entraîne un modèle scikit-learn, génère `houses_sklearn.csv`, puis
 - Objectif de précision à la soutenance : minimum `98%` (selon le sujet/grille).
 - Bonus évalués seulement si le mandatory est parfait.
 
-## 14. Troubleshooting
+## Troubleshooting
 
 - Erreur `No such file or directory: 'weights.json'` lors de `make predict`
   - Cause : `make train` non exécuté (ou `weights.json` supprimé).
@@ -316,14 +475,14 @@ Ce script entraîne un modèle scikit-learn, génère `houses_sklearn.csv`, puis
 - Aucune image générée
   - Vérifier que le dossier de sortie existe (`visuals/`) ou passer `-o <dossier>`.
 
-## 15. Bonus / améliorations possibles
+## Bonus / améliorations possibles
 
 `Bonus sujet` (liste du PDF) :
 - ajouter d'autres métriques dans `describe`
 - implémenter une descente stochastique du gradient
 - implémenter d'autres algorithmes d'optimisation (GD par lots/GD par mini-lots/etc.) nombre d'échantillons
 
-## 16. Stack technique
+## Stack technique
 
 - Langage : `Python`
 - Data : `pandas`, `numpy`
@@ -331,19 +490,18 @@ Ce script entraîne un modèle scikit-learn, génère `houses_sklearn.csv`, puis
 - Référence de comparaison : `scikit-learn` (script optionnel)
 - Orchestration locale : `Makefile`
 
-## 17. Ressources
+## Ressources
 
 - [Scikit-learn](https://scikit-learn.org/stable/)
 - [Matplotlib](https://matplotlib.org/)
 - [NumPy](https://numpy.org/)
 - [Pandas](https://pandas.pydata.org/)
 
-## 18. Licence
+## Licence
 
 MIT License.
 
-## 19. Auteurs
-
+## Auteurs
 
 - **Sylvanna Courbis** — [LinkedIn](https://www.linkedin.com/in/sylvanna-courbis-7626b63a7/) · [GitHub](https://github.com/Sycourbi)
 - **Rafael Verissimo** — [LinkedIn](https://www.linkedin.com/in/verissimo-rafael/) · [GitHub](https://github.com/raveriss)
