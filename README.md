@@ -16,6 +16,7 @@ Le but est de reconstruire un "Sorting Hat" avec une **régression logistique on
 - [2. Objectifs du projet](#2-objectifs-du-projet)
 - [3. Contexte pédagogique (42 / IA / ML)](#3-contexte-pédagogique-42--ia--ml)
 - [4. Quick start (3 minutes)](#4-quick-start-3-minutes)
+- [Documentation](#documentation)
 - [5. Prérequis](#5-prérequis)
 - [6. Installation](#6-installation)
 - [7. Utilisation](#7-utilisation)
@@ -41,6 +42,13 @@ Ce dépôt contient :
 
 Le flux principal est :
 `comprendre les données -> visualiser -> entraîner -> prédire -> comparer`.
+
+### 1.1 Pipeline détaillé
+
+Le détail du pipeline est maintenant documenté dans `docs/` :
+- [Pipeline global](docs/pipeline.md)
+- [Étapes du training](docs/training.md)
+- [Étapes de la prédiction](docs/prediction.md)
 
 ## 2. Objectifs du projet
 
@@ -79,6 +87,12 @@ Résultats attendus :
 - `make describe` affiche les stats en console.
 - `make train` crée `weights.json`.
 - `make predict` crée `houses.csv`.
+
+## Documentation
+
+- [Pipeline global](docs/pipeline.md)
+- [Étapes du training](docs/training.md)
+- [Étapes de la prédiction](docs/prediction.md)
 
 ## 5. Prérequis
 
@@ -137,14 +151,20 @@ Format par défaut des visuels :
 
 ### 7.2 Entraînement et prédiction
 
+Le pipeline minimum (`make train` puis `make predict`) est déjà montré dans le **Quick start**.
+Cette section regroupe surtout les variantes d'exécution utiles pour l'analyse.
+
+### 7.2.1 Mode analyse détaillée (verbose)
+
 ```bash
-make train
-make predict
+make analysis_log_train
+make analysis_log_predict
 ```
 
 Sorties générées :
-- `weights.json`
-- `houses.csv`
+- `weights_training.json` (poids issus du dataset d'analyse)
+- `houses_training.csv` (prédictions sur dataset d'analyse)
+- logs détaillés en console (gradients, scores, probabilités, etc.)
 
 ### 7.3 Exemple en ligne de commande (sans Make)
 
@@ -190,20 +210,35 @@ Index,Hogwarts House
 399,Ravenclaw
 ```
 
+- `visuals/histogram.png`, `visuals/scatter.png`, `visuals/pair_plot.png`
+  - graphiques produits par les scripts d'exploration
+- `visuals/logreg_train_weights.gif`
+  - animation de l'évolution des poids pendant l'entraînement
+- `visuals/kiviat_house_discipline_weights.png`
+  - visualisation radar des poids par maison
+- `weights_training.json`, `houses_training.csv`
+  - artefacts du mode `analysis_log_*`
+
 ## 10. Commandes Make
 
-```bash
-make install     # crée .venv + installe requirements
-make describe    # stats descriptives
-make histogram   # histogramme
-make scatter     # scatter plot
-make pair        # pair plot
-make train       # entraîne et écrit weights.json
-make predict     # prédit et écrit houses.csv
-make clean       # supprime sorties générées
-make re          # clean + install
-make help        # affiche l'aide
-```
+| Commande | Rôle | Sortie / effet principal |
+|---|---|---|
+| `make` / `make all` | Alias d'installation | exécute `install` |
+| `make install` | Crée/valide `.venv` + installe `requirements.txt` | environnement Python prêt |
+| `make describe` | Statistiques descriptives | affichage console |
+| `make histogram` | Histogrammes par matière/maison | `visuals/histogram.png` |
+| `make scatter` | Nuages de points | `visuals/scatter.png` |
+| `make pair` | Pair plot global | `visuals/pair_plot.png` |
+| `make train` | Entraînement logreg one-vs-all | `weights.json` |
+| `make predict` | Prédiction avec poids entraînés | `houses.csv` |
+| `make analysis_log_train` | Entraînement verbose sur dataset d'analyse | `weights_training.json` + logs détaillés |
+| `make analysis_log_predict` | Prédiction verbose sur dataset d'analyse | `houses_training.csv` + logs détaillés (nécessite `weights_training.json`) |
+| `make animate` | Génère une animation de l'évolution des poids | `visuals/logreg_train_weights.gif` |
+| `make kiviat` | Génère un radar des poids par maison | `visuals/kiviat_house_discipline_weights.png` |
+| `make clean` | Supprime artefacts générés | supprime `weights.json`, `houses.csv`, `visuals/`, caches Python (conserve `weights_training.json` et `houses_training.csv`) |
+| `make fclean` | Nettoyage complet | `clean` + suppression `.venv` |
+| `make re` | Réinitialisation environnement | `fclean` puis `all` |
+| `make help` | Aide intégrée | affichage des targets |
 
 ## 11. Structure du projet
 
@@ -212,6 +247,11 @@ dslr/
 ├── datasets/
 │   ├── dataset_train.csv
 │   └── dataset_test.csv
+├── docs/
+│   ├── assets/
+│   ├── pipeline.md
+│   ├── training.md
+│   └── prediction.md
 ├── scripts/
 │   ├── describe.py
 │   ├── histogram.py
