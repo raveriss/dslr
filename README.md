@@ -1,4 +1,4 @@
-# Machine Learning Pipeline for Student House Classification (Python) - DSLR
+# End-to-End Multiclass Classification Pipeline (Python) - DSLR
 
 <div align="center">
 
@@ -6,32 +6,35 @@
 
 </div>
 
-Projet d'IA appliquée qui implémente un pipeline complet de classification multi-classe, de l'exploration de données jusqu'à l'inférence.
+Projet d'IA appliquée qui implémente un pipeline complet de classification multi-classe, de l'exploration de données jusqu'à l'inférence, et réutilisable pour d'autres cas métiers de classification tabulaire.
 
-## Table des matières
+## 🧭 Table des matières
 
-- [Vue d'ensemble](#1-vue-densemble)
-- [🎯 Objectifs du projet](#2-objectifs-du-projet)
-- [Contexte pédagogique (42 / IA / ML)](#3-contexte-pédagogique-42--ia--ml)
-- [🚀 Quick start (3 minutes)](#4-quick-start-3-minutes)
-- [Documentation](#documentation)
-- [Prérequis](#5-prérequis)
-- [Installation](#6-installation)
-- [Utilisation](#7-utilisation)
-- [Scripts obligatoires du sujet DSLR](#8-scripts-obligatoires-du-sujet-dslr)
-- [Entrées / sorties importantes](#9-entrées--sorties-importantes)
-- [📋 Commandes Make](#10-commandes-make)
-- [🗂️ Structure du projet](#11-structure-du-projet)
-- [🧪 Tests, qualité et outils de dev](#12-tests-qualité-et-outils-de-dev)
-- [Conformité au sujet DSLR (checklist)](#13-conformité-au-sujet-dslr-checklist)
-- [Troubleshooting](#14-troubleshooting)
-- [Bonus / améliorations possibles](#15-bonus--améliorations-possibles)
-- [Stack technique](#16-stack-technique)
-- [Ressources](#17-ressources)
-- [🛡️ Licence](#18-licence)
-- [👥 Auteur](#19-auteur)
+- [💼 Vue d'ensemble](#overview)
+- [🗺️ Carte du pipeline](#pipeline-map)
+- [🎯 Objectifs du projet](#project-goals)
+- [🎓 Contexte pédagogique (42 / IA / ML)](#project-context)
+- [🚀 Quick Start (3 minutes)](#quick-start)
+- [📚 Documentation](#documentation)
+- [✅ Prérequis](#prerequisites)
+- [⚙️ Installation](#installation)
+- [🛠️ Utilisation](#usage)
+- [📜 Scripts obligatoires du sujet DSLR](#required-scripts)
+- [📥📤 Entrées / sorties importantes](#inputs-outputs)
+- [📋 Commandes Make](#make-commands)
+- [🖥️ Sorties terminal (tronquées)](#terminal-output)
+- [🗂️ Structure du projet](#project-structure)
+- [🧪 Tests, qualité et outils de dev](#quality-tests)
+- [✅ Conformité au sujet DSLR (checklist)](#checklist)
+- [🩺 Troubleshooting](#troubleshooting)
+- [✨ Bonus / améliorations possibles](#bonus)
+- [🧰 Stack technique](#tech-stack)
+- [🔗 Ressources](#resources)
+- [🛡️ Licence](#license)
+- [👥 Auteurs](#authors)
 
-## Vue d'ensemble
+<a id="overview"></a>
+## 💼 Vue d'ensemble
 
 Ce dépôt contient :
 - des scripts d'exploration de données (`describe`, `histogram`, `scatter_plot`, `pair_plot`) ;
@@ -41,11 +44,14 @@ Ce dépôt contient :
 Le flux principal est :
 `comprendre les données -> visualiser -> entraîner -> prédire -> comparer`.
 
-## Carte du pipeline
+<a id="pipeline-map"></a>
+## 🗺️ Carte du pipeline
 
 ```mermaid
 mindmap
-  root((Student House Classification))
+  root((Multiclass Classification Pipeline))
+    Example Use Case
+      Hogwarts House prediction
     Data Ingestion
       Train CSV
       Test CSV
@@ -67,14 +73,15 @@ mindmap
       Output artifact: houses.csv
 ```
 
-### Pipeline détaillé
+### 🧩 Pipeline détaillé
 
 Le détail du pipeline est maintenant documenté dans `docs/` :
 - [Pipeline global](docs/pipeline.md)
 - [Étapes du training](docs/training.md)
 - [Étapes de la prédiction](docs/prediction.md)
 
-## Objectifs du projet
+<a id="project-goals"></a>
+## 🎯 Objectifs du projet
 
 - Implémenter une analyse descriptive sans `DataFrame.describe()`.
 - Répondre aux 3 questions de visualisation imposées par le sujet.
@@ -82,7 +89,8 @@ Le détail du pipeline est maintenant documenté dans `docs/` :
 - Utiliser la **descente de gradient** pour l'entraînement.
 - Générer `houses.csv` au format attendu.
 
-## Contexte pédagogique (42 / IA / ML)
+<a id="project-context"></a>
+## 🎓 Contexte pédagogique (42 / IA / ML)
 
 Ce projet fait partie du cursus 42 autour de l'IA/ML :
 - lecture et nettoyage d'un dataset ;
@@ -91,7 +99,8 @@ Ce projet fait partie du cursus 42 autour de l'IA/ML :
 
 Le sujet impose une partie technique, mais aussi une capacité à expliquer les notions (mean/std/quartiles, normalisation, one-vs-all, etc.) pendant la soutenance.
 
-## Quick start (3 minutes)
+<a id="quick-start"></a>
+## 🚀 Quick Start (3 minutes)
 
 ```bash
 # 1) Cloner
@@ -112,15 +121,17 @@ Résultats attendus :
 - `make train` crée `weights.json`.
 - `make predict` crée `houses.csv`.
 
-## Documentation
+<a id="documentation"></a>
+## 📚 Documentation
 
 - [Pipeline global](docs/pipeline.md)
 - [Étapes du training](docs/training.md)
 - [Étapes de la prédiction](docs/prediction.md)
 
-## Prérequis
+<a id="prerequisites"></a>
+## ✅ Prérequis
 
-- `python3` (version minimale officielle : `[À compléter]`)
+- `python3` (`3.10+` recommandé)
 - `make`
 - accès shell Linux/macOS (ou équivalent)
 
@@ -130,9 +141,10 @@ Dépendances Python installées depuis `requirements.txt` :
 - `matplotlib`
 - `scikit-learn` (utile pour le benchmark, pas pour l'algorithme "from scratch")
 
-## Installation
+<a id="installation"></a>
+## ⚙️ Installation
 
-### Option A (recommandée)
+### 🟢 Option A (recommandée)
 
 ```bash
 make
@@ -143,9 +155,10 @@ Cette commande exécute `make install` :
 - installation des dépendances via `pip install -r requirements.txt`.
 
 
-## Utilisation
+<a id="usage"></a>
+## 🛠️ Utilisation
 
-### Exploration des données
+### 🔍 Exploration des données
 
 ```bash
 make describe
@@ -162,7 +175,7 @@ Sorties générées :
 Format par défaut des visuels :
 - `1920x1080` (`16:9`) pour `histogram`, `scatter` et `pair_plot` (affichage homogène sur écran PC portable).
 
-### Correspondance commandes -> graphiques
+### 🖼️ Correspondance commandes -> graphiques
 
 | Commande | Graphique généré | Aperçu |
 |---|---|---|
@@ -173,12 +186,12 @@ Format par défaut des visuels :
 | `make kiviat` | `kiviat_house_discipline_weights` |![Kiviat example](docs/assets/kiviat_house_discipline_weights.png) |
 
 
-### Entraînement et prédiction
+### 🧠 Entraînement et prédiction
 
 Le pipeline minimum (`make train` puis `make predict`) est déjà montré dans le **Quick start**.
 Cette section regroupe surtout les variantes d'exécution utiles pour l'analyse.
 
-### Mode analyse détaillée (verbose)
+### 🔎 Mode analyse détaillée (verbose)
 
 ```bash
 make analysis_log_train
@@ -190,14 +203,15 @@ Sorties générées :
 - `houses_training.csv` (prédictions sur dataset d'analyse)
 - logs détaillés en console (gradients, scores, probabilités, etc.)
 
-### Exemple en ligne de commande (sans Make)
+### 💻 Exemple en ligne de commande (sans Make)
 
 ```bash
 .venv/bin/python scripts/logreg_train.py datasets/dataset_train.csv --alpha 0.01 --iterations 1000 --out weights.json
 .venv/bin/python scripts/logreg_predict.py datasets/dataset_test.csv weights.json --out houses.csv
 ```
 
-## Scripts obligatoires du sujet DSLR
+<a id="required-scripts"></a>
+## 📜 Scripts obligatoires du sujet DSLR
 
 | Script | Statut sujet | Question/objectif | Entrée principale | Sortie principale |
 |---|---|---|---|---|
@@ -208,16 +222,17 @@ Sorties générées :
 | `scripts/logreg_train.py` | `Obligatoire` | Entraîner la régression logistique multi-classe one-vs-all via gradient descent | `dataset_train.csv` | `weights.json` |
 | `scripts/logreg_predict.py` | `Obligatoire` | Prédire et générer le fichier de rendu | `dataset_test.csv` + `weights.json` | `houses.csv` |
 
-## Entrées / sorties importantes
+<a id="inputs-outputs"></a>
+## 📥📤 Entrées / sorties importantes
 
-### Fichiers d'entrée
+### 📥 Fichiers d'entrée
 
 - `datasets/dataset_train.csv`
   - contient la cible `Hogwarts House` (pour l'entraînement)
 - `datasets/dataset_test.csv`
   - utilisé pour la prédiction
 
-### Fichiers de sortie
+### 📤 Fichiers de sortie
 
 - `weights.json`
   - paramètres du modèle entraîné (`thetas`, `mu`, `sigma`, `features`, mapping des classes)
@@ -243,7 +258,8 @@ Index,Hogwarts House
 - `weights_training.json`, `houses_training.csv`
   - artefacts du mode `analysis_log_*`
 
-## Commandes Make
+<a id="make-commands"></a>
+## 📋 Commandes Make
 
 | Commande | Rôle | Sortie / effet principal |
 |---|---|---|
@@ -264,7 +280,8 @@ Index,Hogwarts House
 | `make re` | Réinitialisation environnement | `fclean` puis `all` |
 | `make help` | Aide intégrée | affichage des targets |
 
-## Sorties terminal (tronquées)
+<a id="terminal-output"></a>
+## 🖥️ Sorties terminal (tronquées)
 
 ### `make install`
 
@@ -399,7 +416,8 @@ len(['Ravenclaw', 'Slytherin', 'Gryffindor', 'Gryffindor', 'Slytherin', 'Gryffin
 → Fichier de prediction enregistre dans houses_training.csv
 ```
 
-## Structure du projet
+<a id="project-structure"></a>
+## 🗂️ Structure du projet
 
 ```text
 dslr/
@@ -426,9 +444,10 @@ dslr/
 └── README.md
 ```
 
-## Tests, qualité et outils de dev
+<a id="quality-tests"></a>
+## 🧪 Tests, qualité et outils de dev
 
-### Ce qui est présent
+### ✅ Ce qui est présent
 
 - Script de comparaison optionnel :
 
@@ -442,9 +461,10 @@ dslr/
 Ce script entraîne un modèle scikit-learn, génère `houses_sklearn.csv`, puis compare avec `houses.csv`.
 
 
-## Conformité au sujet DSLR (checklist)
+<a id="checklist"></a>
+## ✅ Conformité au sujet DSLR (checklist)
 
-### Obligatoire sujet
+### 📌 Obligatoire sujet
 
 - `describe` présent : `Oui`
 - `histogram` présent : `Oui`
@@ -456,14 +476,15 @@ Ce script entraîne un modèle scikit-learn, génère `houses_sklearn.csv`, puis
 - Descente de gradient : `Oui` (dans `logreg_train.py`)
 - Génération de `houses.csv` : `Oui` (dans `logreg_predict.py`)
 
-### Points d'évaluation importants à connaître
+### 🧠 Points d'évaluation importants à connaître
 
 - Pas de fonctions interdites qui font tout le travail dans `describe`.
 - Format de sortie `houses.csv` strict.
 - Objectif de précision à la soutenance : minimum `98%` (selon le sujet/grille).
 - Bonus évalués seulement si le mandatory est parfait.
 
-## Troubleshooting
+<a id="troubleshooting"></a>
+## 🩺 Troubleshooting
 
 - Erreur `No such file or directory: 'weights.json'` lors de `make predict`
   - Cause : `make train` non exécuté (ou `weights.json` supprimé).
@@ -475,14 +496,16 @@ Ce script entraîne un modèle scikit-learn, génère `houses_sklearn.csv`, puis
 - Aucune image générée
   - Vérifier que le dossier de sortie existe (`visuals/`) ou passer `-o <dossier>`.
 
-## Bonus / améliorations possibles
+<a id="bonus"></a>
+## ✨ Bonus / améliorations possibles
 
 `Bonus sujet` (liste du PDF) :
 - ajouter d'autres métriques dans `describe`
 - implémenter une descente stochastique du gradient
 - implémenter d'autres algorithmes d'optimisation (GD par lots/GD par mini-lots/etc.) nombre d'échantillons
 
-## Stack technique
+<a id="tech-stack"></a>
+## 🧰 Stack technique
 
 - Langage : `Python`
 - Data : `pandas`, `numpy`
@@ -490,18 +513,21 @@ Ce script entraîne un modèle scikit-learn, génère `houses_sklearn.csv`, puis
 - Référence de comparaison : `scikit-learn` (script optionnel)
 - Orchestration locale : `Makefile`
 
-## Ressources
+<a id="resources"></a>
+## 🔗 Ressources
 
 - [Scikit-learn](https://scikit-learn.org/stable/)
 - [Matplotlib](https://matplotlib.org/)
 - [NumPy](https://numpy.org/)
 - [Pandas](https://pandas.pydata.org/)
 
-## Licence
+<a id="license"></a>
+## 🛡️ Licence
 
 MIT License.
 
-## Auteurs
+<a id="authors"></a>
+## 👥 Auteurs
 
 - **Sylvanna Courbis** — [LinkedIn](https://www.linkedin.com/in/sylvanna-courbis-7626b63a7/) · [GitHub](https://github.com/Sycourbi)
 - **Rafael Verissimo** — [LinkedIn](https://www.linkedin.com/in/verissimo-rafael/) · [GitHub](https://github.com/raveriss)
