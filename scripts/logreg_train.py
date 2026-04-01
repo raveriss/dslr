@@ -306,7 +306,14 @@ def main():
         # Pour reproduire la convention train/predict avec biais en colonne 0.
         students_disciplines_scores_with_bias = np.hstack([np.ones((students_count, 1)), standardized_disciplines_scores])
         # Pour afficher l'etat initial des donnees si le mode analyse est actif.
-        analysis_logger.log_initial_scores(students_disciplines_scores, standardized_disciplines_scores)
+        analysis_logger.log_initial_scores(
+            students_disciplines_scores,
+            average_scores_by_disciplines,
+            standard_deviations_by_disciplines,
+            standardized_disciplines_scores,
+            students_count,
+            students_disciplines_scores_with_bias,
+        )
         # Pour lancer l'apprentissage one-vs-all sur les donnees preparees.
         house_disciplines_weights = fit_one_vs_rest_house_classifier(students_disciplines_scores_with_bias, assigned_house_codes_for_students, cli_arguments.learning_rate, cli_arguments.iteration_count, analysis_logger)
         # Pour figer toutes les infos necessaires au predict dans un bundle.
