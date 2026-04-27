@@ -7,6 +7,8 @@
 
 </div>
 
+##### Ce projet fait partie de mon [`🔗 PORTFOLIO`](https://raveriss.dev/) orienté **Data / IA / Software Engineering**
+
 Projet d'IA appliquée qui implémente un pipeline complet de classification multi-classe, de l'exploration de données jusqu'à l'inférence, et réutilisable pour d'autres cas métiers de classification tabulaire.
 
 ## 🧭 Table des matières
@@ -531,4 +533,4 @@ MIT License.
 ## 👥 Auteurs
 
 - **Sylvanna Courbis** — [LinkedIn](https://www.linkedin.com/in/sylvanna-courbis-7626b63a7/) · [GitHub](https://github.com/Sycourbi)
-- **Rafael Verissimo** — [LinkedIn](https://www.linkedin.com/in/verissimo-rafael/) · [GitHub](https://github.com/raveriss)
+- **Rafael Verissimo** — [Portfolio](https://raveriss.dev/) · [LinkedIn](https://www.linkedin.com/in/verissimo-rafael/) · [GitHub](https://github.com/raveriss) 
